@@ -81,6 +81,7 @@ function renderProject() {
     renderIdentification();
     renderVideoCount();
     renderVideoInputs();
+    renderVideoJsonSummary();
     renderAnalysisSummary();
 }
 
@@ -177,25 +178,50 @@ function removeKinovea(videoIndex) {
     setStatus(`Se han eliminado del proyecto los datos Kinovea del vídeo ${videoIndex + 1}.`);
 }
 
-function renderAnalysisSummary() {
-    const container = document.getElementById("bodySectionResults");
+function formatBytes(bytes) {
+    const n = Number(bytes);
+    if (!Number.isFinite(n)) return '-';
+    if (n < 1024) return n + ' bytes';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+function renderVideoJsonSummary() {
+    const container = document.getElementById('videoJsonSummary');
     if (!container) return;
+    const records = [...(pmfProject.kinoveaFiles || [])].sort((a,b)=>Number(a.videoIndex)-Number(b.videoIndex));
+    if (!records.length) {
+        container.innerHTML = '<div class="pmf-summary"><p>No hay archivos Kinovea cargados.</p></div>';
+        return;
+    }
+    const rows = records.map(record => {
+        const mapping = record?.processing?.markerMapping || {};
+        const assigned = Object.values(mapping).filter(v => v !== null && v !== undefined && String(v).trim() !== '').length;
+        const frames = Array.isArray(record?.extracted?.frames) ? record.extracted.frames.length : 0;
+        const variables = record?.processing?.calculatedVariables ? Object.keys(record.processing.calculatedVariables).length : 0;
+        const vn = Number(record.videoNumber || Number(record.videoIndex) + 1);
+        return '<tr><td><strong>Vídeo ' + vn + '</strong></td><td>' + escapeHtml(record.source?.fileName || 'Sin nombre') + '</td><td>' + escapeHtml(formatBytes(record.source?.size)) + '</td><td>' + frames + '</td><td>' + assigned + '</td><td>' + variables + '</td><td><code>' + escapeHtml(shortHash(record.source?.sha256)) + '</code></td></tr>';
+    }).join('');
+    container.innerHTML = '<div class="pmf-summary-cards"><div><span>Vídeos configurados</span><strong>' + (Number(pmfProject.configuration.videoCount)||1) + '</strong></div><div><span>JSON cargados</span><strong>' + records.length + '</strong></div><div><span>Resultado global</span><strong>No aplica</strong></div></div>' +
+      '<div class="table-wrapper"><table><thead><tr><th>Vídeo</th><th>JSON Kinovea</th><th>Tamaño</th><th>Frames</th><th>Marcadores asignados</th><th>Variables calculadas</th><th>SHA-256</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<p class="pmf-note">Cada vídeo puede aportar información de uno o varios segmentos corporales. Los resultados se revisan en su pantalla específica.</p>';
+}
 
-    const count = Number(pmfProject.configuration.videoCount) || 1;
-    const loaded = pmfProject.kinoveaFiles.length;
-
-    const criteriaReady = typeof PMFCriteria !== "undefined";
-    const engineReady = typeof PMFEngine !== "undefined";
-    container.innerHTML = `
-        <div class="pmf-summary">
-            <p><strong>Vídeos configurados:</strong> ${count}</p>
-            <p><strong>Kinovea persistidos:</strong> ${loaded} de ${count}</p>
-            <p><strong>Motor de criterios:</strong> ${criteriaReady ? "cargado" : "no disponible"}.</p>
-            <p><strong>Motor de movimientos y trazabilidad:</strong> ${engineReady ? "cargado" : "no disponible"}.</p>
-            <p><strong>Resultado global:</strong> desactivado por diseño.</p>
-            <p><strong>Salida:</strong> Aceptable / No aceptable por sección corporal. Cuando falte una condición no inferible automáticamente, el estado será “Requiere confirmación”.</p>
-        </div>
-    `;
+function renderAnalysisSummary() {
+    const sections = pmfProject.analysis?.bodySections || {};
+    const targets = {
+        trunk: document.getElementById('results_trunk'),
+        head_neck: document.getElementById('results_head_neck'),
+        lower_right: document.getElementById('results_lower_right'),
+        lower_left: document.getElementById('results_lower_left')
+    };
+    Object.entries(targets).forEach(([key, container]) => {
+        if (!container) return;
+        const section = sections[key];
+        if (!section || !Array.isArray(section.results) || section.results.length === 0) {
+            container.innerHTML = '<div class="pmf-summary"><p><strong>Pendiente de análisis.</strong></p><p>Cuando un vídeo aporte marcadores válidos para este segmento, aquí aparecerán sus resultados.</p></div>';
+        }
+    });
 }
 
 function saveProject() {
@@ -301,7 +327,7 @@ async function runPMFAnalysis() {
         touchProject(false);
         renderAnalysisResults();
         setStatus("Análisis PMF completado: variables, frecuencia, tiempo crítico, estáticas y clasificación por sección guardadas en el proyecto.", "ok");
-        if (typeof goToPMFPage === "function") goToPMFPage("results");
+        if (typeof goToPMFPage === "function") goToPMFPage("summary");
     } catch (error) {
         console.error(error);
         setStatus(error.message || "No se pudo completar el análisis PMF.", "error");
@@ -764,36 +790,34 @@ function bindManualControls() {
 }
 
 function renderAnalysisResults() {
-    const container = document.getElementById("bodySectionResults");
-    if (!container) return;
-
+    renderVideoJsonSummary();
     const sections = pmfProject.analysis?.bodySections || {};
-    const rows = Object.values(sections).map(section => {
+    const targetIds = {trunk:'results_trunk',head_neck:'results_head_neck',lower_right:'results_lower_right',lower_left:'results_lower_left'};
+    Object.entries(targetIds).forEach(([key,id]) => {
+        const container = document.getElementById(id);
+        if (!container) return;
+        const section = sections[key];
+        if (!section) {
+            container.innerHTML = '<div class="pmf-summary"><p>Sin datos suficientes para evaluar este segmento corporal.</p></div>';
+            return;
+        }
         const details = (section.results || []).map(r => {
             const f = Number(r.calculated?.frequencyPerMinute);
             const cp = Number(r.calculated?.criticalPercent);
             const staticSec = Number(r.calculated?.totalStaticSeconds);
+            const angle = Number(r.calculated?.extremeAngle);
             const metrics = [
-                Number.isFinite(f) ? `frecuencia ${f.toFixed(2)} mov/min` : null,
-                Number.isFinite(cp) ? `tiempo crítico ${cp.toFixed(1)}%` : null,
-                Number.isFinite(staticSec) ? `estática acumulada ${staticSec.toFixed(2)} s` : null
-            ].filter(Boolean).join(" · ");
+                Number.isFinite(angle) ? 'ángulo desfavorable ' + angle.toFixed(1) + '°' : null,
+                Number.isFinite(f) ? 'frecuencia ' + f.toFixed(2) + ' mov/min' : null,
+                Number.isFinite(cp) ? 'tiempo crítico ' + cp.toFixed(1) + '%' : null,
+                Number.isFinite(staticSec) ? 'estática acumulada ' + staticSec.toFixed(2) + ' s' : null
+            ].filter(Boolean).join(' · ');
             const manual = manualControlForResult(r);
-            return `<div class="pmf-result-line"><strong>V${r.videoNumber} · ${escapeHtml(r.mode)} · ${escapeHtml(r.measurement)}:</strong> ${escapeHtml(r.status)}<br><span>${escapeHtml(r.reason)}</span>${metrics ? `<br><small>${escapeHtml(metrics)}</small>` : ""}${manual}</div>`;
-        }).join("");
-        const reason = section.reason ? `<div class="pmf-result-line">${escapeHtml(section.reason)}</div>` : "";
-        return `<tr><td><strong>${escapeHtml(section.label)}</strong></td><td><strong>${escapeHtml(section.status)}</strong></td><td>${details || reason || "Sin datos suficientes"}</td></tr>`;
-    }).join("");
-
-    container.innerHTML = `
-        <div class="table-wrapper">
-            <table>
-                <thead><tr><th>Sección corporal</th><th>Estado</th><th>Variables calculadas</th></tr></thead>
-                <tbody>${rows || '<tr><td colspan="3">Pendiente de análisis.</td></tr>'}</tbody>
-            </table>
-        </div>
-        <p class="pmf-note">El resultado de cada sección se obtiene de la situación más desfavorable de las mediciones y vídeos disponibles. No se calcula ningún resultado global. Los casos que dependen de una condición observacional no inferible automáticamente quedan como “REQUIERE_CONFIRMACION”.</p>
-    `;
+            return '<div class="pmf-result-card"><div class="pmf-result-card-head"><span>Vídeo ' + r.videoNumber + ' · ' + escapeHtml(r.mode) + '</span><strong>' + escapeHtml(r.status) + '</strong></div><h3>' + escapeHtml(r.measurement) + '</h3><p>' + escapeHtml(r.reason) + '</p>' + (metrics ? '<div class="pmf-result-metrics">' + escapeHtml(metrics) + '</div>' : '') + manual + '</div>';
+        }).join('');
+        const reason = section.reason ? '<div class="pmf-callout"><span>' + escapeHtml(section.reason) + '</span></div>' : '';
+        container.innerHTML = '<div class="pmf-section-status"><span>Resultado del segmento</span><strong>' + escapeHtml(section.status || 'NO_EVALUADO') + '</strong></div>' + (details || reason || '<div class="pmf-summary"><p>No hay mediciones válidas para este segmento.</p></div>') + '<p class="pmf-note">El resultado corresponde a la situación más desfavorable entre los vídeos que aportan datos válidos para este segmento. No se calcula un resultado global de la tarea.</p>';
+    });
     bindManualControls();
 }
 
