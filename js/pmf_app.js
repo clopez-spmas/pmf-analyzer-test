@@ -189,22 +189,57 @@ function formatBytes(bytes) {
 function renderVideoJsonSummary() {
     const container = document.getElementById('videoJsonSummary');
     if (!container) return;
+
     const records = [...(pmfProject.kinoveaFiles || [])].sort((a,b)=>Number(a.videoIndex)-Number(b.videoIndex));
     if (!records.length) {
-        container.innerHTML = '<div class="pmf-summary"><p>No hay archivos Kinovea cargados.</p></div>';
+        container.innerHTML = '<div class="placeholder">Todavía no hay datos importados.</div>';
         return;
     }
-    const rows = records.map(record => {
+
+    const markerLabels = {
+        head_front:'Punto anterior de cabeza',
+        head_back:'Punto posterior de cabeza',
+        right_ear:'Oreja derecha',
+        left_ear:'Oreja izquierda',
+        neck:'Cuello',
+        right_shoulder:'Hombro derecho',
+        left_shoulder:'Hombro izquierdo',
+        right_hip:'Cadera derecha',
+        left_hip:'Cadera izquierda',
+        right_knee:'Rodilla derecha',
+        left_knee:'Rodilla izquierda',
+        right_ankle:'Tobillo derecho',
+        left_ankle:'Tobillo izquierdo',
+        right_foot:'Pie derecho',
+        left_foot:'Pie izquierdo'
+    };
+
+    const rows = records.map((record,index) => {
         const mapping = record?.processing?.markerMapping || {};
-        const assigned = Object.values(mapping).filter(v => v !== null && v !== undefined && String(v).trim() !== '').length;
-        const frames = Array.isArray(record?.extracted?.frames) ? record.extracted.frames.length : 0;
-        const variables = record?.processing?.calculatedVariables ? Object.keys(record.processing.calculatedVariables).length : 0;
-        const vn = Number(record.videoNumber || Number(record.videoIndex) + 1);
-        return '<tr><td><strong>Vídeo ' + vn + '</strong></td><td>' + escapeHtml(record.source?.fileName || 'Sin nombre') + '</td><td>' + escapeHtml(formatBytes(record.source?.size)) + '</td><td>' + frames + '</td><td>' + assigned + '</td><td>' + variables + '</td></tr>';
+        const selected = Object.entries(mapping)
+            .filter(([,value]) => value !== null && value !== undefined && String(value).trim() !== '')
+            .map(([key,value]) => (markerLabels[key] || key) + ': ' + value);
+
+        const frames = Array.isArray(record?.extracted?.frames) ? record.extracted.frames : [];
+        const times = frames.map(frame => Number(frame?.time)).filter(Number.isFinite);
+        const duration = times.length ? Math.max(...times) - Math.min(...times) : 0;
+        const period = duration > 0 ? 'Todo el vídeo · ' + duration.toFixed(2).replace('.', ',') + ' s' : 'Todo el vídeo';
+        const task = pmfProject.identification?.task || '—';
+
+        return '<tr>' +
+            '<td>JSON ' + (index + 1) + '</td>' +
+            '<td>' + escapeHtml(record.source?.fileName || 'Sin nombre') + '</td>' +
+            '<td>Sin definir</td>' +
+            '<td>' + escapeHtml(task) + '</td>' +
+            '<td>' + escapeHtml(period) + '</td>' +
+            '<td>' + (selected.length ? selected.map(escapeHtml).join('<br>') : 'Ninguno') + '</td>' +
+        '</tr>';
     }).join('');
-    container.innerHTML = '<div class="pmf-summary-cards"><div><span>Vídeos configurados</span><strong>' + (Number(pmfProject.configuration.videoCount)||1) + '</strong></div><div><span>JSON cargados</span><strong>' + records.length + '</strong></div><div><span>Resultado global</span><strong>No aplica</strong></div></div>' +
-      '<div class="table-wrapper"><table><thead><tr><th>Vídeo</th><th>JSON Kinovea</th><th>Tamaño</th><th>Frames</th><th>Marcadores asignados</th><th>Variables calculadas</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-      '<p class="pmf-note">Cada vídeo puede aportar información de uno o varios segmentos corporales. Los resultados se revisan en su pantalla específica.</p>';
+
+    container.innerHTML = '<div class="result-table-wrap"><table class="compact-table"><thead><tr>' +
+        '<th>Archivo</th><th>JSON</th><th>Vista</th><th>Tarea / fase</th><th>Periodo propio</th><th>Marcadores seleccionados</th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+        '<div class="notice"><strong>Trazabilidad:</strong> cada JSON se conserva como una muestra independiente. Los tiempos de vídeos diferentes no se suman entre sí.</div>';
 }
 
 function renderAnalysisSummary() {
