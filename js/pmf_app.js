@@ -223,13 +223,24 @@ function renderVideoJsonSummary() {
         const frames = Array.isArray(record?.extracted?.frames) ? record.extracted.frames : [];
         const times = frames.map(frame => Number(frame?.time)).filter(Number.isFinite);
         const duration = times.length ? Math.max(...times) - Math.min(...times) : 0;
-        const period = duration > 0 ? 'Todo el vídeo · ' + duration.toFixed(2).replace('.', ',') + ' s' : 'Todo el vídeo';
-        const task = pmfProject.identification?.task || '—';
+        const cfg = record?.processing?.kinoveaConfig || {view:'unspecified',task:'',range:{mode:'all',start:0,end:duration,cycles:1}};
+        const viewLabels = {unspecified:'Sin definir',lateral_right:'Lateral derecho',lateral_left:'Lateral izquierdo',frontal:'Frontal',threequarter_right:'3/4 derecho',threequarter_left:'3/4 izquierdo'};
+        const range = cfg.range || {mode:'all',start:0,end:duration,cycles:1};
+        let period = 'Todo el vídeo · ' + duration.toFixed(2).replace('.', ',') + ' s';
+        if (range.mode === 'interval') {
+            const start = Math.max(0, Math.min(duration, Number(range.start) || 0));
+            const end = Math.max(start, Math.min(duration, Number(range.end) || duration));
+            period = start.toFixed(2).replace('.', ',') + '–' + end.toFixed(2).replace('.', ',') + ' s · ' + (end-start).toFixed(2).replace('.', ',') + ' s';
+        } else if (range.mode === 'cycles') {
+            const cycles = Math.max(1, Math.floor(Number(range.cycles) || 1));
+            period = 'Todo · ' + cycles + ' ciclos · ' + (duration / cycles).toFixed(2).replace('.', ',') + ' s/ciclo';
+        }
+        const task = String(cfg.task || pmfProject.identification?.task || '—');
 
         return '<tr>' +
             '<td>JSON ' + (index + 1) + '</td>' +
             '<td>' + escapeHtml(record.source?.fileName || 'Sin nombre') + '</td>' +
-            '<td>Sin definir</td>' +
+            '<td>' + escapeHtml(viewLabels[cfg.view] || 'Sin definir') + '</td>' +
             '<td>' + escapeHtml(task) + '</td>' +
             '<td>' + escapeHtml(period) + '</td>' +
             '<td>' + (selected.length ? selected.map(escapeHtml).join('<br>') : 'Ninguno') + '</td>' +
@@ -325,6 +336,7 @@ async function runPMFAnalysis() {
         setStatus("Asigna los marcadores anatómicos de los vídeos.");
         const ordered = [...pmfProject.kinoveaFiles].sort((a,b)=>Number(a.videoIndex)-Number(b.videoIndex));
         const markersByVideo = ordered.map(record => Array.isArray(record?.extracted?.markers) ? record.extracted.markers : []);
+        window.PMFActiveKinoveaRecords = ordered;
 
         if (typeof createAllMarkerMappingUI !== "function") {
             throw new Error("No está disponible la interfaz de asignación de marcadores.");
@@ -341,7 +353,18 @@ async function runPMFAnalysis() {
                 throw new Error("No está disponible el adaptador anatómico.");
             }
 
-            const anatomicalFrames = adaptKinoveaFrames(record.extracted.frames, mapping);
+            const cfg = record.processing?.kinoveaConfig || {};
+            const range = cfg.range || {mode:"all"};
+            let sourceFrames = Array.isArray(record.extracted.frames) ? record.extracted.frames : [];
+            if (range.mode === "interval") {
+                const start = Number(range.start) || 0;
+                const end = Number.isFinite(Number(range.end)) ? Number(range.end) : Infinity;
+                sourceFrames = sourceFrames.filter(frame => {
+                    const t = Number(frame?.time);
+                    return Number.isFinite(t) && t >= start && t <= end;
+                });
+            }
+            const anatomicalFrames = adaptKinoveaFrames(sourceFrames, mapping);
             record.processing.anatomicalFrames = PMFStorage.deepClone(anatomicalFrames);
 
             if (typeof PMFSignedBiomechanics === "undefined") {
