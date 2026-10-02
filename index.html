@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Posturas y Movimientos Forzados</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/pmf.css">
+</head>
+<body>
+<div class="pmf-beta-banner">
+  <strong>VERSIÓN EN PRUEBAS</strong>
+  <span>No utilizar para OCRA ni para evaluaciones ergonómicas definitivas.</span>
+</div>
+<header class="header">
+  <h1>Posturas y Movimientos Forzados</h1>
+  <p>Análisis biomecánico mediante datos procedentes de Kinovea.</p>
+</header>
+
+<main class="pmf-main">
+<section class="section">
+  <h2>1. Identificación de la evaluación</h2>
+  <div class="pmf-grid">
+    <label>Empresa<input id="projectCompany" type="text" autocomplete="off"></label>
+    <label>Centro / puesto<input id="projectWorkstation" type="text" autocomplete="off"></label>
+    <label>Tarea<input id="projectTask" type="text" autocomplete="off"></label>
+    <label>Técnico/a<input id="projectAnalyst" type="text" autocomplete="off"></label>
+  </div>
+  <label class="pmf-wide">Observaciones<textarea id="projectNotes" rows="3"></textarea></label>
+</section>
+
+<section class="section">
+  <h2>2. Vídeos / archivos Kinovea</h2>
+  <p>Todos los archivos corresponden a la misma tarea. Los datos Kinovea quedan incorporados al proyecto guardado.</p>
+  <div class="video-count-configuration" id="videoCountConfiguration"></div>
+  <div id="videoInputsContainer" class="video-inputs-container"></div>
+</section>
+
+<section class="section"><h2>3. Asignación de marcadores</h2><div id="markerMappingContainer" class="mapping-container">Pendiente de análisis.</div></section>
+
+<section class="section">
+  <h2>4. Estado del proyecto</h2>
+  <div id="projectStatus" class="pmf-status">Proyecto nuevo.</div>
+  <div class="pmf-actions">
+    <button id="saveProjectButton" type="button">Guardar proyecto JSON</button>
+    <label class="pmf-file-button">Abrir proyecto JSON
+      <input id="loadProjectInput" type="file" accept=".json,application/json">
+    </label>
+  </div>
+</section>
+
+<section class="section">
+  <h2>5. Análisis por sección corporal</h2>
+  <div class="pmf-actions"><button id="runPMFAnalysisButton" type="button">Analizar datos Kinovea</button></div>
+  <p class="pmf-note">Esta primera versión deja preparada la estructura de proyecto. El motor de clasificación Aceptable / No aceptable y la trazabilidad por sección corporal se incorporarán sobre estos datos persistentes.</p>
+  <div id="bodySectionResults" class="pmf-placeholder">Pendiente de análisis.</div>
+</section>
+</main>
+
+<footer>Posturas y Movimientos Forzados — versión de desarrollo</footer>
+
+<script src="js/kinovea.js"></script>
+<script src="js/models.js"></script>
+<script src="js/geometry.js"></script>
+<script src="js/catalog.js"></script>
+<script src="js/markerMapping.js"></script>
+<script src="js/biomechanical_adapter.js"></script>
+<script src="js/biomechanics.js"></script>
+<script src="js/pmf_storage.js"></script>
+<script src="js/pmf_criteria.js"></script>
+<script src="js/pmf_engine.js"></script>
+<script src="js/pmf_signed_biomechanics.js"></script>
+<script src="js/pmf_selftest.js"></script>
+<script src="js/pmf_app.js"></script>
+</body>
+</html>
