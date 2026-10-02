@@ -432,81 +432,36 @@ const MAPPING_GROUPS = [
     {
         label: "Cabeza y cuello",
         keys: [
-            "head",
             "head_front",
             "head_back",
             "right_ear",
             "left_ear",
-            "neck",
-            "neck_base"
+            "neck"
         ]
     },
 
     {
-        label: "Hombros",
+        label: "Tronco",
         keys: [
             "right_shoulder",
-            "left_shoulder"
-        ]
-    },
-
-    {
-        label: "Codos",
-        keys: [
-            "right_elbow",
-            "left_elbow"
-        ]
-    },
-
-    {
-        label: "Muñecas",
-        keys: [
-            "right_wrist",
-            "left_wrist"
-        ]
-    },
-
-    {
-        label: "Manos",
-        keys: [
-            "right_index",
-            "left_index"
-        ]
-    },
-
-    {
-        label: "Tronco y pelvis",
-        keys: [
-            "pelvis",
+            "left_shoulder",
             "right_hip",
             "left_hip"
         ]
     },
 
     {
-        label: "Rodillas",
+        label: "Extremidades inferiores",
         keys: [
             "right_knee",
-            "left_knee"
-        ]
-    },
-
-    {
-        label: "Tobillos",
-        keys: [
+            "left_knee",
             "right_ankle",
-            "left_ankle"
-        ]
-    },
-
-    {
-        label: "Pies",
-        keys: [
+            "left_ankle",
             "right_foot",
             "left_foot"
         ]
     }
-];
+]
 
 
 function createMarkerMappingSection(
