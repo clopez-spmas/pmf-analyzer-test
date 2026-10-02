@@ -44,3 +44,22 @@
   .pmf-page-card{padding:20px}
   .pmf-page-actions{flex-direction:column}
 }
+
+
+/* ===== Resumen de vídeos y resultados por segmento ===== */
+.pmf-summary-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:0 0 20px}
+.pmf-summary-cards>div{background:#f7f9fc;border:1px solid #e1e8ef;border-radius:10px;padding:16px}
+.pmf-summary-cards span{display:block;font-size:12px;color:#687585;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.pmf-summary-cards strong{font-size:22px;color:#1f4e79}
+.pmf-section-status{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#f4f7fa;border:1px solid #dce4ec;border-radius:10px;padding:16px 18px;margin-bottom:18px}
+.pmf-section-status span{font-weight:600;color:#526170}
+.pmf-section-status strong{font-size:18px;color:#1f4e79}
+.pmf-result-card{border:1px solid #e1e7ee;border-radius:10px;padding:18px;margin:0 0 14px;background:#fff}
+.pmf-result-card-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:8px;color:#607080;font-size:13px}
+.pmf-result-card-head strong{font-size:14px;color:#1f4e79}
+.pmf-result-card h3{margin:4px 0 8px;color:#33475b}
+.pmf-result-card p{margin:0 0 8px;line-height:1.5}
+.pmf-result-metrics{background:#f7f9fc;border-radius:7px;padding:9px 11px;font-size:13px;color:#4f5f6f;margin-top:10px}
+.pmf-section-results{min-height:140px}
+#videoJsonSummary table code{font-size:11px}
+@media(max-width:800px){.pmf-summary-cards{grid-template-columns:1fr}.pmf-result-card-head,.pmf-section-status{align-items:flex-start;flex-direction:column}}
