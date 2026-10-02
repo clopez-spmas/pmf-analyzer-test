@@ -464,6 +464,158 @@ const MAPPING_GROUPS = [
 ]
 
 
+
+function pmfMappingRecord(videoIndex) {
+    const records = Array.isArray(window.PMFActiveKinoveaRecords) ? window.PMFActiveKinoveaRecords : [];
+    return records[Number(videoIndex)] || null;
+}
+
+function pmfEnsureKinoveaConfig(videoIndex) {
+    const record = pmfMappingRecord(videoIndex);
+    if (!record) return null;
+    record.processing = record.processing || {};
+    const frames = Array.isArray(record?.extracted?.frames) ? record.extracted.frames : [];
+    const duration = frames.length ? Math.max(...frames.map(frame => Number(frame?.time) || 0)) : 0;
+    record.processing.kinoveaConfig = record.processing.kinoveaConfig || {
+        view: "unspecified",
+        task: "",
+        range: { mode: "all", start: 0, end: duration, cycles: 1 }
+    };
+    const cfg = record.processing.kinoveaConfig;
+    cfg.view = cfg.view || "unspecified";
+    cfg.task = String(cfg.task || "");
+    cfg.range = Object.assign({mode:"all",start:0,end:duration,cycles:1}, cfg.range || {});
+    cfg.range.start = Math.max(0, Number(cfg.range.start) || 0);
+    cfg.range.end = Math.max(cfg.range.start, Number(cfg.range.end));
+    if (!Number.isFinite(cfg.range.end)) cfg.range.end = duration;
+    cfg.range.cycles = Math.max(1, Math.floor(Number(cfg.range.cycles) || 1));
+    return cfg;
+}
+
+function pmfKinoveaDuration(videoIndex) {
+    const record = pmfMappingRecord(videoIndex);
+    const frames = Array.isArray(record?.extracted?.frames) ? record.extracted.frames : [];
+    return frames.length ? Math.max(...frames.map(frame => Number(frame?.time) || 0)) : 0;
+}
+
+function pmfRangeLabel(videoIndex) {
+    const cfg = pmfEnsureKinoveaConfig(videoIndex);
+    const duration = pmfKinoveaDuration(videoIndex);
+    if (!cfg) return "Todo el vídeo";
+    if (cfg.range.mode === "interval") {
+        const start = Math.max(0, Math.min(duration, Number(cfg.range.start) || 0));
+        const end = Math.max(start, Math.min(duration, Number(cfg.range.end) || duration));
+        return start.toFixed(2).replace(".", ",") + "–" + end.toFixed(2).replace(".", ",") + " s · " + (end-start).toFixed(2).replace(".", ",") + " s";
+    }
+    if (cfg.range.mode === "cycles") {
+        return "Todo · " + cfg.range.cycles + " ciclos · " + (duration / cfg.range.cycles).toFixed(2).replace(".", ",") + " s/ciclo";
+    }
+    return "Todo el vídeo · " + duration.toFixed(2).replace(".", ",") + " s";
+}
+
+function pmfKinoveaConfigHtml(videoIndex) {
+    const cfg = pmfEnsureKinoveaConfig(videoIndex);
+    if (!cfg) return "";
+    const index = Number(videoIndex);
+    const interval = cfg.range.mode === "interval";
+    const cycles = cfg.range.mode === "cycles";
+    const viewOptions = [
+        ["unspecified","Sin definir"],
+        ["lateral_right","Lateral derecho"],
+        ["lateral_left","Lateral izquierdo"],
+        ["frontal","Frontal"],
+        ["threequarter_right","3/4 derecho"],
+        ["threequarter_left","3/4 izquierdo"]
+    ];
+    return `
+        <p>Cada archivo se analiza de forma independiente. Indique la vista y, si procede, la tarea/fase observada.</p>
+        <div class="form-grid pmf-kinovea-config">
+            <label>Vista del vídeo
+                <select data-pmf-kview="${index}">
+                    ${viewOptions.map(([value,label]) => `<option value="${value}" ${cfg.view===value?"selected":""}>${label}</option>`).join("")}
+                </select>
+            </label>
+            <label>Tarea / fase
+                <input type="text" data-pmf-ktask="${index}" value="${escapeMarkerText(cfg.task)}" placeholder="Opcional">
+            </label>
+            <label>Periodo de análisis
+                <select data-pmf-range-mode="${index}">
+                    <option value="all" ${cfg.range.mode==="all"?"selected":""}>Todo el vídeo</option>
+                    <option value="interval" ${interval?"selected":""}>Desde un tiempo hasta otro</option>
+                    <option value="cycles" ${cycles?"selected":""}>Número de ciclos visibles</option>
+                </select>
+            </label>
+            <label data-pmf-interval-field="${index}" ${interval?"":"hidden"}>Tiempo inicial (s)
+                <input type="number" min="0" step="0.01" data-pmf-range-start="${index}" value="${cfg.range.start}">
+            </label>
+            <label data-pmf-interval-field="${index}" ${interval?"":"hidden"}>Tiempo final (s)
+                <input type="number" min="0" step="0.01" data-pmf-range-end="${index}" value="${cfg.range.end}">
+            </label>
+            <label data-pmf-cycles-field="${index}" ${cycles?"":"hidden"}>Número de ciclos visibles
+                <input type="number" min="1" step="1" data-pmf-range-cycles="${index}" value="${cfg.range.cycles}">
+            </label>
+        </div>
+        <div class="notice" data-pmf-range-label="${index}">${escapeMarkerText(pmfRangeLabel(index))}</div>
+        <p>Asigne a cada marcador Kinovea el punto anatómico que representa.</p>
+    `;
+}
+
+function pmfRefreshKinoveaConfigUI(container, videoIndex) {
+    const cfg = pmfEnsureKinoveaConfig(videoIndex);
+    if (!cfg) return;
+    container.querySelectorAll('[data-pmf-interval-field="'+videoIndex+'"]').forEach(el => el.hidden = cfg.range.mode !== "interval");
+    container.querySelectorAll('[data-pmf-cycles-field="'+videoIndex+'"]').forEach(el => el.hidden = cfg.range.mode !== "cycles");
+    const label = container.querySelector('[data-pmf-range-label="'+videoIndex+'"]');
+    if (label) label.textContent = pmfRangeLabel(videoIndex);
+}
+
+function bindPMFKinoveaConfig(container) {
+    container.querySelectorAll("[data-pmf-kview]").forEach(el => {
+        el.addEventListener("change", () => {
+            const cfg = pmfEnsureKinoveaConfig(Number(el.dataset.pmfKview));
+            if (cfg) cfg.view = el.value;
+        });
+    });
+    container.querySelectorAll("[data-pmf-ktask]").forEach(el => {
+        el.addEventListener("change", () => {
+            const cfg = pmfEnsureKinoveaConfig(Number(el.dataset.pmfKtask));
+            if (cfg) cfg.task = el.value.trim();
+        });
+    });
+    container.querySelectorAll("[data-pmf-range-mode]").forEach(el => {
+        el.addEventListener("change", () => {
+            const index = Number(el.dataset.pmfRangeMode);
+            const cfg = pmfEnsureKinoveaConfig(index);
+            if (cfg) cfg.range.mode = el.value;
+            pmfRefreshKinoveaConfigUI(container, index);
+        });
+    });
+    container.querySelectorAll("[data-pmf-range-start]").forEach(el => {
+        el.addEventListener("change", () => {
+            const index = Number(el.dataset.pmfRangeStart);
+            const cfg = pmfEnsureKinoveaConfig(index);
+            if (cfg) cfg.range.start = Math.max(0, Number(el.value) || 0);
+            pmfRefreshKinoveaConfigUI(container, index);
+        });
+    });
+    container.querySelectorAll("[data-pmf-range-end]").forEach(el => {
+        el.addEventListener("change", () => {
+            const index = Number(el.dataset.pmfRangeEnd);
+            const cfg = pmfEnsureKinoveaConfig(index);
+            if (cfg) cfg.range.end = Math.max(cfg.range.start, Number(el.value) || pmfKinoveaDuration(index));
+            pmfRefreshKinoveaConfigUI(container, index);
+        });
+    });
+    container.querySelectorAll("[data-pmf-range-cycles]").forEach(el => {
+        el.addEventListener("change", () => {
+            const index = Number(el.dataset.pmfRangeCycles);
+            const cfg = pmfEnsureKinoveaConfig(index);
+            if (cfg) cfg.range.cycles = Math.max(1, Math.floor(Number(el.value) || 1));
+            pmfRefreshKinoveaConfigUI(container, index);
+        });
+    });
+}
+
 function createMarkerMappingSection(
     markers,
     videoIndex
@@ -481,11 +633,8 @@ function createMarkerMappingSection(
 
     let html = `
         <div class="marker-mapping-dialog" data-video-index="${index}">
-            <h3>Vídeo ${index + 1}</h3>
-            <p>
-                Seleccione qué marcador Kinovea corresponde
-                a cada punto anatómico.
-            </p>
+            <h3>JSON ${index + 1}: ${escapeMarkerText(pmfMappingRecord(index)?.source?.fileName || ("Vídeo " + (index + 1)))}</h3>
+            ${pmfKinoveaConfigHtml(index)}
             <p>
                 No es necesario asignar todos los puntos.
                 Solo se utilizarán los marcadores disponibles
@@ -782,6 +931,8 @@ function createAllMarkerMappingUI(videoMarkers) {
                     }
                 );
             });
+
+        bindPMFKinoveaConfig(container);
 
         const cancelButton =
             document.getElementById(
