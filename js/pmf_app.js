@@ -224,7 +224,6 @@ function renderVideoJsonSummary() {
         const times = frames.map(frame => Number(frame?.time)).filter(Number.isFinite);
         const duration = times.length ? Math.max(...times) - Math.min(...times) : 0;
         const cfg = record?.processing?.kinoveaConfig || {view:'unspecified',task:'',range:{mode:'all',start:0,end:duration,cycles:1}};
-        const viewLabels = {unspecified:'Sin definir',lateral_right:'Lateral derecho',lateral_left:'Lateral izquierdo',frontal:'Frontal',threequarter_right:'3/4 derecho',threequarter_left:'3/4 izquierdo'};
         const range = cfg.range || {mode:'all',start:0,end:duration,cycles:1};
         let period = 'Todo el vídeo · ' + duration.toFixed(2).replace('.', ',') + ' s';
         if (range.mode === 'interval') {
@@ -240,7 +239,6 @@ function renderVideoJsonSummary() {
         return '<tr>' +
             '<td>JSON ' + (index + 1) + '</td>' +
             '<td>' + escapeHtml(record.source?.fileName || 'Sin nombre') + '</td>' +
-            '<td>' + escapeHtml(viewLabels[cfg.view] || 'Sin definir') + '</td>' +
             '<td>' + escapeHtml(task) + '</td>' +
             '<td>' + escapeHtml(period) + '</td>' +
             '<td>' + (selected.length ? selected.map(escapeHtml).join('<br>') : 'Ninguno') + '</td>' +
@@ -248,7 +246,7 @@ function renderVideoJsonSummary() {
     }).join('');
 
     container.innerHTML = '<div class="result-table-wrap"><table class="compact-table"><thead><tr>' +
-        '<th>Archivo</th><th>JSON</th><th>Vista</th><th>Tarea / fase</th><th>Periodo propio</th><th>Marcadores seleccionados</th>' +
+        '<th>Archivo</th><th>JSON</th><th>Tarea / fase</th><th>Periodo propio</th><th>Marcadores seleccionados</th>' +
         '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
         '<div class="notice"><strong>Trazabilidad:</strong> cada JSON se conserva como una muestra independiente. Los tiempos de vídeos diferentes no se suman entre sí.</div>';
 }
