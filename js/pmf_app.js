@@ -200,10 +200,10 @@ function renderVideoJsonSummary() {
         const frames = Array.isArray(record?.extracted?.frames) ? record.extracted.frames.length : 0;
         const variables = record?.processing?.calculatedVariables ? Object.keys(record.processing.calculatedVariables).length : 0;
         const vn = Number(record.videoNumber || Number(record.videoIndex) + 1);
-        return '<tr><td><strong>Vídeo ' + vn + '</strong></td><td>' + escapeHtml(record.source?.fileName || 'Sin nombre') + '</td><td>' + escapeHtml(formatBytes(record.source?.size)) + '</td><td>' + frames + '</td><td>' + assigned + '</td><td>' + variables + '</td><td><code>' + escapeHtml(shortHash(record.source?.sha256)) + '</code></td></tr>';
+        return '<tr><td><strong>Vídeo ' + vn + '</strong></td><td>' + escapeHtml(record.source?.fileName || 'Sin nombre') + '</td><td>' + escapeHtml(formatBytes(record.source?.size)) + '</td><td>' + frames + '</td><td>' + assigned + '</td><td>' + variables + '</td></tr>';
     }).join('');
     container.innerHTML = '<div class="pmf-summary-cards"><div><span>Vídeos configurados</span><strong>' + (Number(pmfProject.configuration.videoCount)||1) + '</strong></div><div><span>JSON cargados</span><strong>' + records.length + '</strong></div><div><span>Resultado global</span><strong>No aplica</strong></div></div>' +
-      '<div class="table-wrapper"><table><thead><tr><th>Vídeo</th><th>JSON Kinovea</th><th>Tamaño</th><th>Frames</th><th>Marcadores asignados</th><th>Variables calculadas</th><th>SHA-256</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<div class="table-wrapper"><table><thead><tr><th>Vídeo</th><th>JSON Kinovea</th><th>Tamaño</th><th>Frames</th><th>Marcadores asignados</th><th>Variables calculadas</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
       '<p class="pmf-note">Cada vídeo puede aportar información de uno o varios segmentos corporales. Los resultados se revisan en su pantalla específica.</p>';
 }
 
