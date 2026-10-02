@@ -301,6 +301,7 @@ async function runPMFAnalysis() {
         touchProject(false);
         renderAnalysisResults();
         setStatus("Análisis PMF completado: variables, frecuencia, tiempo crítico, estáticas y clasificación por sección guardadas en el proyecto.", "ok");
+        if (typeof goToPMFPage === "function") goToPMFPage("results");
     } catch (error) {
         console.error(error);
         setStatus(error.message || "No se pudo completar el análisis PMF.", "error");
