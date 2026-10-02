@@ -660,7 +660,7 @@ function createMarkerMappingSection(
         html += `
             <div class="marker-row">
                 <label>
-                    ${escapeMarkerText(markerName)}
+                    Marcador ${escapeMarkerText(markerName)}
                 </label>
                 <select
                     data-marker="${escapeMarkerText(markerName)}"
