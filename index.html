@@ -1,142 +1,101 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Posturas y Movimientos Forzados</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Posturas y Movimientos Forzados · Ergonomic Analyzer</title>
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/pmf.css">
 </head>
 <body>
+<main class="ocra-shell pmf-shell">
+
 <div class="pmf-beta-banner">
   <strong>VERSIÓN EN PRUEBAS</strong>
   <span>No utilizar para OCRA ni para evaluaciones ergonómicas definitivas.</span>
 </div>
 
-<header class="header pmf-app-header">
+<header class="ocra-header">
+  <div class="brand">ERGONOMIC ANALYZER · POSTURAS Y MOVIMIENTOS FORZADOS</div>
   <h1>Posturas y Movimientos Forzados</h1>
   <p>Análisis biomecánico mediante datos procedentes de Kinovea.</p>
 </header>
 
-<nav class="pmf-stepper" aria-label="Progreso del análisis">
-  <button type="button" data-pmf-nav="start">Inicio</button>
-  <button type="button" data-pmf-nav="identification">Datos</button>
-  <button type="button" data-pmf-nav="videos">Vídeos</button>
-  <button type="button" data-pmf-nav="markers">Marcadores</button>
-  <button type="button" data-pmf-nav="summary">Resumen</button>
-  <button type="button" data-pmf-nav="trunk">Tronco</button>
-  <button type="button" data-pmf-nav="head_neck">Cabeza/cuello</button>
-  <button type="button" data-pmf-nav="lower_right">EI derecha</button>
-  <button type="button" data-pmf-nav="lower_left">EI izquierda</button>
-  <button type="button" data-pmf-nav="project">Proyecto</button>
+<nav class="screen-nav" aria-label="Navegación del estudio">
+  <button type="button" id="homeBtn" class="nav-secondary">Inicio</button>
+  <div class="screen-counter" id="screenCounter">Pantalla 1 de 8</div>
+  <button type="button" id="prevBtn" class="nav-secondary">Anterior</button>
+  <button type="button" id="nextBtn" class="nav-primary">Siguiente</button>
 </nav>
 
-<main class="pmf-wizard">
+<section class="study-toolbar">
+  <button type="button" id="saveProjectButton" class="toolbar-btn">Guardar estudio</button>
+  <button type="button" id="loadProjectButton" class="toolbar-btn">Cargar estudio</button>
+  <button type="button" id="newStudyButton" class="toolbar-btn">Nuevo estudio</button>
+  <button type="button" id="simulationBtn" class="toolbar-btn" disabled title="Función pendiente de incorporar en PMF">Ir a simulación</button>
+  <button type="button" id="wordTablesBtn" class="toolbar-btn" disabled title="Función pendiente de incorporar en PMF">Tablas para Word</button>
+  <button type="button" id="instructionsBtn" class="toolbar-btn" disabled title="Instrucciones PMF pendientes de preparar">Instrucciones de uso</button>
+  <input id="loadProjectInput" type="file" accept=".json,application/json" hidden>
+</section>
+<div id="projectStatus" class="status" role="status" aria-live="polite">Proyecto nuevo.</div>
 
-<section class="pmf-page is-active" data-pmf-page="start">
-  <div class="pmf-page-card pmf-welcome">
-    <div class="pmf-page-number">VERSIÓN DE PRUEBAS</div>
-    <h2>Evaluación de Posturas y Movimientos Forzados</h2>
-    <p>El análisis se realiza por etapas y los resultados se revisan de forma independiente para cada segmento corporal.</p>
-    <div class="pmf-start-grid">
-      <div><strong>1</strong><span>Datos de la evaluación</span></div>
-      <div><strong>2</strong><span>Vídeos Kinovea</span></div>
-      <div><strong>3</strong><span>Asignación de marcadores</span></div>
-      <div><strong>4</strong><span>Resumen de vídeos y JSON</span></div>
-      <div><strong>5</strong><span>Resultados por segmento corporal</span></div>
-    </div>
-    <button type="button" class="pmf-primary pmf-big-button" data-pmf-next="identification">Comenzar evaluación →</button>
+<section class="screen active" data-screen="0" data-page-name="identification">
+  <div class="screen-title"><span>1</span><div><h2>Identificación del estudio</h2><p>Datos básicos para identificar la evaluación y la tarea analizada.</p></div></div>
+  <div class="form-grid pmf-grid">
+    <label>Empresa<input id="projectCompany" type="text" autocomplete="off"></label>
+    <label>Centro / puesto<input id="projectWorkstation" type="text" autocomplete="off"></label>
+    <label>Tarea evaluada<input id="projectTask" type="text" autocomplete="off"></label>
+    <label>Técnico/a<input id="projectAnalyst" type="text" autocomplete="off"></label>
+    <label>Observaciones<textarea id="projectNotes" rows="4"></textarea></label>
   </div>
 </section>
 
-<section class="pmf-page" data-pmf-page="identification">
-  <div class="pmf-page-card">
-    <div class="pmf-page-heading"><span class="pmf-page-number">DATOS DE LA EVALUACIÓN</span><h2>Identificación</h2><p>Identifica el estudio y la tarea que se va a analizar.</p></div>
-    <div class="pmf-grid">
-      <label>Empresa<input id="projectCompany" type="text" autocomplete="off"></label>
-      <label>Centro / puesto<input id="projectWorkstation" type="text" autocomplete="off"></label>
-      <label>Tarea<input id="projectTask" type="text" autocomplete="off"></label>
-      <label>Técnico/a<input id="projectAnalyst" type="text" autocomplete="off"></label>
-    </div>
-    <label class="pmf-wide">Observaciones<textarea id="projectNotes" rows="4"></textarea></label>
-    <div class="pmf-page-actions"><button type="button" class="pmf-secondary" data-pmf-prev="start">← Inicio</button><button type="button" class="pmf-primary" data-pmf-next="videos">Siguiente: vídeos →</button></div>
+<section class="screen" data-screen="1" data-page-name="videos">
+  <div class="screen-title"><span>2</span><div><h2>Vídeos y archivos Kinovea</h2><p>Seleccione los JSON correspondientes a los vídeos de una misma tarea.</p></div></div>
+  <div class="calculation-box">
+    <strong>Número de vídeos</strong>
+    <div class="video-count-configuration" id="videoCountConfiguration"></div>
   </div>
+  <div id="videoInputsContainer" class="video-inputs-container"></div>
+  <div class="notice">Cada vídeo puede aportar únicamente los marcadores necesarios para una parte del análisis. No es necesario disponer de todos los segmentos corporales en un mismo vídeo.</div>
 </section>
 
-<section class="pmf-page" data-pmf-page="videos">
-  <div class="pmf-page-card">
-    <div class="pmf-page-heading"><span class="pmf-page-number">VÍDEOS KINOVEA</span><h2>Carga de archivos JSON</h2><p>Todos los vídeos configurados corresponden a la misma tarea. Cada vídeo puede aportar únicamente los marcadores necesarios para una parte del análisis.</p></div>
-    <div class="pmf-subpanel"><h3>Número de vídeos</h3><div class="video-count-configuration" id="videoCountConfiguration"></div></div>
-    <div id="videoInputsContainer" class="video-inputs-container"></div>
-    <div class="pmf-page-actions"><button type="button" class="pmf-secondary" data-pmf-prev="identification">← Datos</button><button type="button" class="pmf-primary" data-pmf-next="markers">Siguiente: marcadores →</button></div>
+<section class="screen" data-screen="2" data-page-name="markers">
+  <div class="screen-title"><span>3</span><div><h2>Asignación de marcadores</h2><p>Asigne los marcadores Kinovea a los puntos anatómicos disponibles en cada vídeo.</p></div></div>
+  <div class="calculation-box">
+    <strong>Análisis Kinovea</strong>
+    <div class="notice">La asignación es independiente para cada vídeo y se guarda dentro del estudio.</div>
+    <div class="pmf-analysis-launch"><button id="runPMFAnalysisButton" class="nav-primary" type="button">Iniciar asignación y analizar</button></div>
   </div>
+  <div id="markerMappingContainer" class="calculation-box"><div class="placeholder">Pulse «Iniciar asignación y analizar» cuando haya cargado los JSON.</div></div>
 </section>
 
-<section class="pmf-page" data-pmf-page="markers">
-  <div class="pmf-page-card">
-    <div class="pmf-page-heading"><span class="pmf-page-number">MARCADORES</span><h2>Asignación de marcadores y análisis</h2><p>Asigna en cada vídeo únicamente los puntos anatómicos disponibles. No es necesario que todos los vídeos contengan todos los segmentos corporales.</p></div>
-    <div class="pmf-callout"><strong>Importante</strong><span>La asignación es independiente por vídeo. Al finalizar, el programa conservará cada mapping dentro del proyecto.</span></div>
-    <div class="pmf-actions pmf-analysis-launch"><button id="runPMFAnalysisButton" class="pmf-primary pmf-big-button" type="button">Iniciar asignación y analizar</button></div>
-    <div id="markerMappingContainer" class="mapping-container pmf-mapping-stage">Pulsa «Iniciar asignación y analizar» cuando hayas cargado los JSON.</div>
-    <div class="pmf-page-actions"><button type="button" class="pmf-secondary" data-pmf-prev="videos">← Vídeos</button><button type="button" class="pmf-primary" data-pmf-next="summary">Ver resumen →</button></div>
-  </div>
+<section class="screen" data-screen="3" data-page-name="summary">
+  <div class="screen-title"><span>4</span><div><h2>Datos importados de Kinovea</h2><p>Resumen de los vídeos, JSON, marcadores y datos procesados incorporados al estudio.</p></div></div>
+  <div id="videoJsonSummary" class="calculation-box"><div class="placeholder">Todavía no hay datos importados.</div></div>
 </section>
 
-<section class="pmf-page" data-pmf-page="summary">
-  <div class="pmf-page-card">
-    <div class="pmf-page-heading"><span class="pmf-page-number">RESUMEN DEL ANÁLISIS</span><h2>Vídeos y JSON cargados</h2><p>Comprueba qué archivos forman parte de la tarea y qué información se ha conservado para cada vídeo.</p></div>
-    <div id="videoJsonSummary">Pendiente de carga.</div>
-    <div class="pmf-page-actions"><button type="button" class="pmf-secondary" data-pmf-prev="markers">← Marcadores</button><button type="button" class="pmf-primary" data-pmf-next="trunk">Siguiente: tronco →</button></div>
-  </div>
+<section class="screen" data-screen="4" data-page-name="trunk">
+  <div class="screen-title"><span>5</span><div><h2>Tronco</h2><p>Flexión/extensión, inclinación lateral y rotación axial.</p></div></div>
+  <div id="results_trunk" class="calculation-box pmf-section-results"><div class="placeholder">Pendiente de análisis.</div></div>
 </section>
 
-<section class="pmf-page" data-pmf-page="trunk">
-  <div class="pmf-page-card pmf-results-page">
-    <div class="pmf-page-heading"><span class="pmf-page-number">SEGMENTO CORPORAL</span><h2>Tronco</h2><p>Flexión/extensión, inclinación lateral y rotación axial. Se muestran únicamente los vídeos que aportan datos válidos para este segmento.</p></div>
-    <div id="results_trunk" class="pmf-section-results">Pendiente de análisis.</div>
-    <div class="pmf-page-actions"><button type="button" class="pmf-secondary" data-pmf-prev="summary">← Resumen</button><button type="button" class="pmf-primary" data-pmf-next="head_neck">Siguiente: cabeza/cuello →</button></div>
-  </div>
+<section class="screen" data-screen="5" data-page-name="head_neck">
+  <div class="screen-title"><span>6</span><div><h2>Cabeza y cuello</h2><p>Flexión/extensión, lateralización y rotación axial.</p></div></div>
+  <div id="results_head_neck" class="calculation-box pmf-section-results"><div class="placeholder">Pendiente de análisis.</div></div>
 </section>
 
-<section class="pmf-page" data-pmf-page="head_neck">
-  <div class="pmf-page-card pmf-results-page">
-    <div class="pmf-page-heading"><span class="pmf-page-number">SEGMENTO CORPORAL</span><h2>Cabeza / cuello</h2><p>Flexión/extensión, lateralización y rotación axial de cabeza/cuello.</p></div>
-    <div id="results_head_neck" class="pmf-section-results">Pendiente de análisis.</div>
-    <div class="pmf-page-actions"><button type="button" class="pmf-secondary" data-pmf-prev="trunk">← Tronco</button><button type="button" class="pmf-primary" data-pmf-next="lower_right">Siguiente: extremidad inferior derecha →</button></div>
-  </div>
+<section class="screen" data-screen="6" data-page-name="lower_right">
+  <div class="screen-title"><span>7</span><div><h2>Extremidad inferior derecha</h2><p>Valoración independiente de rodilla y tobillo derechos.</p></div></div>
+  <div id="results_lower_right" class="calculation-box pmf-section-results"><div class="placeholder">Pendiente de análisis.</div></div>
 </section>
 
-<section class="pmf-page" data-pmf-page="lower_right">
-  <div class="pmf-page-card pmf-results-page">
-    <div class="pmf-page-heading"><span class="pmf-page-number">SEGMENTO CORPORAL</span><h2>Extremidad inferior derecha</h2><p>Rodilla y tobillo derechos. Las condiciones observacionales que no puedan deducirse del vídeo se solicitan como confirmación técnica.</p></div>
-    <div id="results_lower_right" class="pmf-section-results">Pendiente de análisis.</div>
-    <div class="pmf-page-actions"><button type="button" class="pmf-secondary" data-pmf-prev="head_neck">← Cabeza/cuello</button><button type="button" class="pmf-primary" data-pmf-next="lower_left">Siguiente: extremidad inferior izquierda →</button></div>
-  </div>
-</section>
-
-<section class="pmf-page" data-pmf-page="lower_left">
-  <div class="pmf-page-card pmf-results-page">
-    <div class="pmf-page-heading"><span class="pmf-page-number">SEGMENTO CORPORAL</span><h2>Extremidad inferior izquierda</h2><p>Rodilla y tobillo izquierdos. El resultado se mantiene independiente del lado derecho.</p></div>
-    <div id="results_lower_left" class="pmf-section-results">Pendiente de análisis.</div>
-    <div class="pmf-page-actions"><button type="button" class="pmf-secondary" data-pmf-prev="lower_right">← Extremidad inferior derecha</button><button type="button" class="pmf-primary" data-pmf-next="project">Siguiente: proyecto →</button></div>
-  </div>
-</section>
-
-<section class="pmf-page" data-pmf-page="project">
-  <div class="pmf-page-card">
-    <div class="pmf-page-heading"><span class="pmf-page-number">PROYECTO</span><h2>Guardar o recuperar el proyecto</h2><p>El JSON del proyecto conserva Kinovea, mappings, cálculos, confirmaciones y trazabilidad.</p></div>
-    <div id="projectStatus" class="pmf-status">Proyecto nuevo.</div>
-    <div class="pmf-project-actions">
-      <button id="saveProjectButton" class="pmf-primary" type="button">Guardar proyecto JSON</button>
-      <label class="pmf-file-button pmf-secondary">Abrir proyecto JSON<input id="loadProjectInput" type="file" accept=".json,application/json"></label>
-    </div>
-    <div class="pmf-callout pmf-callout-soft"><strong>Al volver a abrir un proyecto</strong><span>No tendrás que volver a cargar los archivos Kinovea originales si sus datos ya estaban incorporados al JSON del proyecto.</span></div>
-    <div class="pmf-page-actions"><button type="button" class="pmf-secondary" data-pmf-prev="lower_left">← Extremidad inferior izquierda</button><button type="button" class="pmf-primary" data-pmf-next="start">Volver al inicio</button></div>
-  </div>
+<section class="screen" data-screen="7" data-page-name="lower_left">
+  <div class="screen-title"><span>8</span><div><h2>Extremidad inferior izquierda</h2><p>Valoración independiente de rodilla y tobillo izquierdos.</p></div></div>
+  <div id="results_lower_left" class="calculation-box pmf-section-results"><div class="placeholder">Pendiente de análisis.</div></div>
 </section>
 
 </main>
-<footer>Posturas y Movimientos Forzados · versión de desarrollo</footer>
 
 <script src="js/kinovea.js"></script>
 <script src="js/models.js"></script>
