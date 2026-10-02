@@ -85,6 +85,18 @@ async function pmfBuildKinoveaRecord(file, rawJson, parsedData, videoIndex) {
             frames: Array.isArray(parsedData?.frames) ? pmfDeepClone(parsedData.frames) : []
         },
         processing: {
+            kinoveaConfig: {
+                view: "unspecified",
+                task: "",
+                range: {
+                    mode: "all",
+                    start: 0,
+                    end: Array.isArray(parsedData?.frames) && parsedData.frames.length
+                        ? Math.max(...parsedData.frames.map(frame => Number(frame?.time) || 0))
+                        : 0,
+                    cycles: 1
+                }
+            },
             markerMapping: null,
             anatomicalFrames: null,
             biomechanicalFrames: null,
