@@ -519,22 +519,9 @@ function pmfKinoveaConfigHtml(videoIndex) {
     const index = Number(videoIndex);
     const interval = cfg.range.mode === "interval";
     const cycles = cfg.range.mode === "cycles";
-    const viewOptions = [
-        ["unspecified","Sin definir"],
-        ["lateral_right","Lateral derecho"],
-        ["lateral_left","Lateral izquierdo"],
-        ["frontal","Frontal"],
-        ["threequarter_right","3/4 derecho"],
-        ["threequarter_left","3/4 izquierdo"]
-    ];
     return `
         <p>Cada archivo se analiza de forma independiente. Indique la vista y, si procede, la tarea/fase observada.</p>
         <div class="form-grid pmf-kinovea-config">
-            <label>Vista del vídeo
-                <select data-pmf-kview="${index}">
-                    ${viewOptions.map(([value,label]) => `<option value="${value}" ${cfg.view===value?"selected":""}>${label}</option>`).join("")}
-                </select>
-            </label>
             <label>Tarea / fase
                 <input type="text" data-pmf-ktask="${index}" value="${escapeMarkerText(cfg.task)}" placeholder="Opcional">
             </label>
@@ -570,12 +557,6 @@ function pmfRefreshKinoveaConfigUI(container, videoIndex) {
 }
 
 function bindPMFKinoveaConfig(container) {
-    container.querySelectorAll("[data-pmf-kview]").forEach(el => {
-        el.addEventListener("change", () => {
-            const cfg = pmfEnsureKinoveaConfig(Number(el.dataset.pmfKview));
-            if (cfg) cfg.view = el.value;
-        });
-    });
     container.querySelectorAll("[data-pmf-ktask]").forEach(el => {
         el.addEventListener("change", () => {
             const cfg = pmfEnsureKinoveaConfig(Number(el.dataset.pmfKtask));
