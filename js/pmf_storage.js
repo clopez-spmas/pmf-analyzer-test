@@ -30,6 +30,12 @@ function pmfCreateEmptyProject() {
         analysis: {
             bodySections: {},
             manualConfirmations: {},
+            sectionStudy: {
+                trunk: { source: "kinovea", timeMode: "seconds", durationSeconds: 60, variables: {} },
+                head_neck: { source: "kinovea", timeMode: "seconds", durationSeconds: 60, variables: {} },
+                lower_right: { source: "kinovea", timeMode: "seconds", durationSeconds: 60, posture: "standing", variables: {} },
+                lower_left: { source: "kinovea", timeMode: "seconds", durationSeconds: 60, posture: "standing", variables: {} }
+            },
             traceability: {}
         }
     };
@@ -48,6 +54,11 @@ function pmfNormalizeProject(candidate) {
     project.identification = Object.assign(base.identification, candidate.identification || {});
     project.configuration = Object.assign(base.configuration, candidate.configuration || {});
     project.analysis = Object.assign(base.analysis, candidate.analysis || {});
+    project.analysis.sectionStudy = Object.assign(base.analysis.sectionStudy, candidate.analysis?.sectionStudy || {});
+    Object.keys(base.analysis.sectionStudy).forEach(key => {
+        project.analysis.sectionStudy[key] = Object.assign(base.analysis.sectionStudy[key], candidate.analysis?.sectionStudy?.[key] || {});
+        project.analysis.sectionStudy[key].variables = Object.assign({}, candidate.analysis?.sectionStudy?.[key]?.variables || {});
+    });
     project.kinoveaFiles = Array.isArray(candidate.kinoveaFiles) ? candidate.kinoveaFiles : [];
 
     project.configuration.overallResultEnabled = false;
