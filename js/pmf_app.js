@@ -489,6 +489,11 @@ function analyzeStaticSeries(series, bandPredicate) {
     };
 }
 
+function trunkFlexionSupport() {
+    const value = ensureSectionStudy("trunk")?.variables?.flexion?.fullSupport;
+    return value === true ? true : value === false ? false : null;
+}
+
 function manualValue(key) {
     return pmfProject.analysis?.manualConfirmations?.[key]?.value ?? null;
 }
@@ -526,13 +531,13 @@ function classifyRecord(record) {
         const s=getSeriesFromRecord(record,"trunk_flexion_signed");
         if(s.length){
             const dyn=analyzeDynamicSeries(s, v=>v>=1&&v<=20, v=>v<=0||v>20);
-            const key=`v${record.videoNumber}.dynamic.trunk.fullSupport`;
+            const support=trunkFlexionSupport();
             const criterion=PMFCriteria.dynamic.trunkFlexion({
                 angle:dyn.extremeAngle,
                 frequencyPerMinute:dyn.frequencyPerMinute,
-                fullTrunkSupport:manualValue(key)
+                fullTrunkSupport:support
             });
-            out.push(classifyMeasurement({record,section:"trunk",mode:"dynamic",measurement:"Flexión / extensión",calculated:dyn,criterionResult:criterion,manualKey:key}));
+            out.push(classifyMeasurement({record,section:"trunk",mode:"dynamic",measurement:"Flexión / extensión",calculated:dyn,criterionResult:criterion}));
         }
     }
 
@@ -584,8 +589,7 @@ function classifyRecord(record) {
     {
         const s=getSeriesFromRecord(record,"trunk_flexion_signed");
         if(s.length){
-            const key=`v${record.videoNumber}.static.trunk.fullSupport`;
-            const support=manualValue(key);
+            const support=trunkFlexionSupport();
 
             // Extensión: ≤0°. No se mezcla su duración con la flexión.
             const extension=analyzeStaticSeries(s,v=>v<=0);
@@ -600,9 +604,7 @@ function classifyRecord(record) {
                     record,section:"trunk",mode:"static",
                     measurement:"Flexión / extensión · ≤0°",
                     calculated:extension,
-                    criterionResult:criterion,
-                    manualKey:key
-                }));
+                    criterionResult:criterion}));
             }
 
             // Flexión >20°–60°: sumar únicamente el tiempo mantenido en este rango.
@@ -625,9 +627,7 @@ function classifyRecord(record) {
                     record,section:"trunk",mode:"static",
                     measurement:"Flexión · >20°–60°",
                     calculated:midFlex,
-                    criterionResult:criterion,
-                    manualKey:key
-                }));
+                    criterionResult:criterion}));
             }
 
             // Flexión >60°: se valora de forma independiente y es no aceptable.
@@ -1041,12 +1041,10 @@ function buildManualSection(key) {
             if(v.source!=="manual" || !Number.isFinite(v.angle)) return;
             const tv=manualTimeValues(study,v.time);
             if(def.kind==="trunkFlex"){
-                const mk="manual.trunk.dynamic.fullSupport";
-                const dyn=PMFCriteria.dynamic.trunkFlexion({angle:v.angle,frequencyPerMinute:Number.isFinite(v.frequency)?v.frequency:0,fullTrunkSupport:manualValue(mk)});
-                results.push(pmfManualResult(key,"dynamic",def.label,{extremeAngle:v.angle,frequencyPerMinute:Number.isFinite(v.frequency)?v.frequency:0,criticalPercent:tv.percent,criticalSeconds:tv.seconds,totalSeconds:tv.duration},dyn,mk));
+                const support=trunkFlexionSupport();
+                const dyn=PMFCriteria.dynamic.trunkFlexion({angle:v.angle,frequencyPerMinute:Number.isFinite(v.frequency)?v.frequency:0,fullTrunkSupport:support});
+                results.push(pmfManualResult(key,"dynamic",def.label,{extremeAngle:v.angle,frequencyPerMinute:Number.isFinite(v.frequency)?v.frequency:0,criticalPercent:tv.percent,criticalSeconds:tv.seconds,totalSeconds:tv.duration},dyn));
                 if(tv.seconds>PMFCriteria.LIMITS.staticMinSeconds){
-                    const sk="manual.trunk.static.fullSupport";
-                    const support=manualValue(sk);
                     const durationCheck=support===false ? trunkStaticDurationCriterion(v.angle,tv.seconds) : null;
                     const st=PMFCriteria.static.trunk({
                         motion:"flexion",
@@ -1062,7 +1060,7 @@ function buildManualSection(key) {
                         calculated.maxAcceptableStaticSeconds=durationCheck.limitSeconds;
                         calculated.durationCriterionResult=durationCheck.result;
                     }
-                    results.push(pmfManualResult(key,"static",def.label,calculated,st,sk));
+                    results.push(pmfManualResult(key,"static",def.label,calculated,st));
                 }
             } else {
                 const fn=def.kind==="trunkLateral"?PMFCriteria.dynamic.trunkLateral:PMFCriteria.dynamic.trunkRotation;
@@ -1156,6 +1154,9 @@ function sectionStudyControls(key) {
           : (key==="trunk" && def.key==="lateral"
               ? '<label>Intervalo angular<select data-pmf-trunk-lateral-band><option value="">-- seleccionar --</option><option value="ltNeg10" '+(v.angleBand==="ltNeg10"?"selected":"")+'>‹ -10°</option><option value="fromNeg10to10" '+(v.angleBand==="fromNeg10to10"?"selected":"")+'>-10° a 10° (incluidos)</option><option value="gt10" '+(v.angleBand==="gt10"?"selected":"")+'>› 10°</option></select></label>'
               : '<label>'+angleLabel+'<input type="number" step="0.1" data-pmf-manual-angle="'+def.key+'" value="'+escapeHtml(v.angle ?? "")+'"></label>');
+        const supportCell = key==="trunk" && def.key==="flexion"
+          ? '<td><label>Soporte completo<select data-pmf-trunk-flexion-support><option value="">-- seleccionar --</option><option value="true" '+(v.fullSupport===true?"selected":"")+'>Con soporte</option><option value="false" '+(v.fullSupport===false?"selected":"")+'>Sin soporte</option></select></label></td>'
+          : '<td><span class="pmf-result-empty">—</span></td>';
         const manualCells=source==="manual"
           ? '<td>'+angleControl+'</td>'+
             '<td><label>Tiempo ('+unitLabel+')<input type="number" min="0" step="0.1" data-pmf-manual-time="'+def.key+'" value="'+escapeHtml(v.time ?? "")+'"></label></td>'+
@@ -1163,7 +1164,7 @@ function sectionStudyControls(key) {
           : '<td colspan="3"><div class="notice">Se utilizarán los datos Kinovea disponibles para este movimiento/postura.</div></td>';
         return '<tr><td><strong>'+escapeHtml(def.label)+'</strong></td>'+
           '<td><label>Fuente<select data-pmf-movement-source="'+def.key+'"><option value="kinovea" '+(source==="kinovea"?"selected":"")+'>Kinovea</option><option value="manual" '+(source==="manual"?"selected":"")+'>Manual</option></select></label></td>'+
-          manualCells+'</tr>';
+          manualCells+supportCell+'</tr>';
     }).join("");
 
     return '<div class="pmf-study-controls" data-pmf-study-section="'+key+'">'+
@@ -1172,7 +1173,7 @@ function sectionStudyControls(key) {
         '<label>Duración analizada (s)<input type="number" min="0.01" step="0.1" data-pmf-duration value="'+escapeHtml(study.durationSeconds)+'"></label>'+
         (lower && movementSource(key,"knee")==="manual"?'<label>Postura de referencia<select data-pmf-posture><option value="standing" '+(study.posture==="standing"?"selected":"")+'>De pie</option><option value="seated" '+(study.posture==="seated"?"selected":"")+'>Sentado/a</option></select></label>':'')+
       '</div>':'')+
-      '<div class="result-table-wrap"><table class="compact-table"><thead><tr><th>Movimiento / postura</th><th>Fuente</th><th>Ángulo</th><th>Tiempo</th><th>Frecuencia</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+      '<div class="result-table-wrap"><table class="compact-table"><thead><tr><th>Movimiento / postura</th><th>Fuente</th><th>Ángulo</th><th>Tiempo</th><th>Frecuencia</th><th>Soporte</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
       pmfSectionHelp(key)+
       (hasManual?'<div class="notice">Cada movimiento/postura puede estudiarse de forma independiente. Los datos manuales se combinan con los resultados Kinovea del resto del segmento. Una postura manual se considera estática cuando el tiempo introducido supera 4 segundos.</div>':'<div class="notice">Todos los movimientos/posturas de este segmento se obtendrán de Kinovea mientras mantengan esta fuente seleccionada.</div>')+
     '</div>';
@@ -1200,6 +1201,7 @@ function bindSectionStudyControls() {
         block.querySelector("[data-pmf-trunk-flexion-band]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.angleBand=e.target.value||null;if(e.target.value!=="gt20to60")delete study.variables.flexion.exactAngle;delete study.variables.flexion.angle;rerender();});
         block.querySelector("[data-pmf-trunk-flexion-exact]")?.addEventListener("change",e=>{const a=Number(e.target.value);study.variables.flexion=study.variables.flexion||{};study.variables.flexion.exactAngle=Number.isFinite(a)&&a>20&&a<=60?a:null;rerender();});
         block.querySelector("[data-pmf-trunk-lateral-band]")?.addEventListener("change",e=>{study.variables.lateral=study.variables.lateral||{};study.variables.lateral.angleBand=e.target.value||null;delete study.variables.lateral.angle;rerender();});
+        block.querySelector("[data-pmf-trunk-flexion-support]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.fullSupport=e.target.value==="true"?true:e.target.value==="false"?false:null;rerender();});
         block.querySelectorAll("[data-pmf-manual-angle]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pmfManualAngle;study.variables[k]=study.variables[k]||{};study.variables[k].angle=el.value===""?null:Number(el.value);rerender();}));
         block.querySelectorAll("[data-pmf-manual-time]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pmfManualTime;study.variables[k]=study.variables[k]||{};study.variables[k].time=el.value===""?0:Number(el.value);rerender();}));
         block.querySelectorAll("[data-pmf-manual-frequency]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pmfManualFrequency;study.variables[k]=study.variables[k]||{};study.variables[k].frequencyBand=el.value==="gte2"?"gte2":"lt2";delete study.variables[k].frequency;rerender();}));
