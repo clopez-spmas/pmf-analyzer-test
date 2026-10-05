@@ -1395,7 +1395,7 @@ function sectionStudyControls(key) {
               : '<td><div class="pmf-cell-stack"><label>Frecuencia<select data-pmf-manual-frequency="'+def.key+'"><option value="lt2" '+((v.frequencyBand||"lt2")==="lt2"?"selected":"")+'>‹ 2 movimientos/minuto</option><option value="gte2" '+(v.frequencyBand==="gte2"?"selected":"")+'>≥ 2 movimientos/minuto</option></select></label></div></td>')
           : '<td colspan="3"><div class="pmf-kinovea-note">'+
               (key==="head_neck"&&def.key==="flexion"
-                ? 'Se utilizarán los datos Kinovea de cabeza. Si es necesario calcular β − α, el programa buscará automáticamente el análisis de tronco realizado sobre el <strong>mismo vídeo original</strong>. Si no existe, no se mezclarán datos de otro vídeo y será necesario aportar α manualmente.'
+                ? 'Se utilizarán los datos Kinovea de cabeza. Para calcular la flexo-extensión del cuello es necesario disponer del análisis de tronco de este mismo vídeo o introducir α manualmente.'
                 : 'Se utilizarán los datos Kinovea disponibles para este movimiento/postura.')+
               '</div></td>';
         return '<tr><td><strong>'+escapeHtml(def.label)+'</strong></td>'+
