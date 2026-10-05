@@ -117,8 +117,9 @@ function renderVideoInputs() {
         const block = document.createElement("div");
         block.className = "video-input-block pmf-video-card";
 
+        const originalVideoName = record?.source?.originalVideoFileName || record?.parsedKinovea?.originalFilename || null;
         const persistedText = record
-            ? `<div class="pmf-persisted"><strong>Guardado en el estudio:</strong> ${escapeHtml(record.source?.fileName || "Kinovea sin nombre")} · ${formatFrames(record)} · SHA-256: ${escapeHtml(shortHash(record.source?.sha256))}</div>`
+            ? `<div class="pmf-persisted"><strong>Guardado en el estudio:</strong> ${escapeHtml(record.source?.fileName || "Kinovea sin nombre")}${originalVideoName ? ` · Vídeo original: <strong>${escapeHtml(originalVideoName)}</strong>` : ""} · ${formatFrames(record)} · SHA-256: ${escapeHtml(shortHash(record.source?.sha256))}</div>`
             : `<div class="pmf-empty">Todavía no hay datos Kinovea guardados para este vídeo.</div>`;
 
         block.innerHTML = `
@@ -670,7 +671,8 @@ function classifyRecord(record) {
     {
         const headSeries=getSeriesFromRecord(record,"head_flexion_signed");
         if(headSeries.length){
-            const trunkSeries=getSeriesFromRecord(record,"trunk_flexion_signed");
+            const matchedTrunkRecord=matchingTrunkRecordForHead(record);
+            const trunkSeries=matchingTrunkSeriesForHead(record);
             const neckSeries=differenceSeries(headSeries,trunkSeries);
             const supports=headStaticSupportValues();
             const bands=[
@@ -711,7 +713,12 @@ function classifyRecord(record) {
                         neckFlexionAngle:neckAngle,
                         durationCriterionResult:durationCheck?.result ?? null
                     });
-                    if(Number.isFinite(neckAngle)) st.neckFlexionAngle=neckAngle;
+                    if(Number.isFinite(neckAngle)){
+                        st.neckFlexionAngle=neckAngle;
+                        st.trunkAlphaSource="same_original_video";
+                        st.trunkAlphaVideoNumber=matchedTrunkRecord?.videoNumber ?? record.videoNumber;
+                        st.originalVideoFileName=record?.source?.originalVideoFileName || record?.parsedKinovea?.originalFilename || null;
+                    }
                     if(durationCheck){
                         st.maxAcceptableStaticSeconds=durationCheck.limitSeconds;
                         st.durationCriterionResult=durationCheck.result;
@@ -1099,17 +1106,30 @@ function headStaticDurationCriterion(angle, observedSeconds) {
     };
 }
 
-function availableTrunkAlpha() {
-    const ordered=[...(pmfProject.kinoveaFiles||[])].sort((a,b)=>Number(a.videoIndex)-Number(b.videoIndex));
-    const values=[];
-    ordered.forEach(record=>{
-        const s=getSeriesFromRecord(record,"trunk_flexion_signed");
-        if(!s.length) return;
-        const extreme=seriesExtreme(s);
-        if(extreme && Number.isFinite(Number(extreme.value))) values.push(Number(extreme.value));
-    });
-    if(!values.length) return null;
-    return values.reduce((worst,v)=>Math.abs(v)>Math.abs(worst)?v:worst,values[0]);
+function originalVideoKey(record) {
+    const raw=record?.source?.originalVideoFileName
+        || record?.parsedKinovea?.originalFilename
+        || null;
+    return raw ? String(raw).trim().toLowerCase() : null;
+}
+
+function matchingTrunkRecordForHead(record) {
+    const sameRecordSeries=getSeriesFromRecord(record,"trunk_flexion_signed");
+    if(sameRecordSeries.length) return record;
+
+    const key=originalVideoKey(record);
+    if(!key) return null;
+
+    return (pmfProject.kinoveaFiles||[]).find(candidate =>
+        candidate !== record &&
+        originalVideoKey(candidate)===key &&
+        getSeriesFromRecord(candidate,"trunk_flexion_signed").length
+    ) || null;
+}
+
+function matchingTrunkSeriesForHead(record) {
+    const match=matchingTrunkRecordForHead(record);
+    return match ? getSeriesFromRecord(match,"trunk_flexion_signed") : [];
 }
 
 function headStaticSupportValues() {
@@ -1236,9 +1256,8 @@ function buildManualSection(key) {
                 const raw=vars.flexion||{};
                 const supports=headStaticSupportValues();
                 const exactAngle=raw.staticAngleBand==="gt25to85" ? Number(raw.staticExactAngle) : v.angle;
-                const reusedTrunkAlpha=availableTrunkAlpha();
                 const manualTrunkAlpha=Number(raw.trunkAlpha);
-                const trunkAlpha=Number.isFinite(reusedTrunkAlpha)?reusedTrunkAlpha:manualTrunkAlpha;
+                const trunkAlpha=manualTrunkAlpha;
                 const neckAngle=raw.staticAngleBand==="gt25to85" && supports.fullTrunkSupport===false &&
                     Number.isFinite(exactAngle) && Number.isFinite(trunkAlpha)
                     ? exactAngle-trunkAlpha
@@ -1261,7 +1280,7 @@ function buildManualSection(key) {
                 if(Number.isFinite(neckAngle)){
                     calculated.neckFlexionAngle=neckAngle;
                     calculated.trunkAlpha=trunkAlpha;
-                    calculated.trunkAlphaSource=Number.isFinite(reusedTrunkAlpha)?"kinovea_reused":"manual";
+                    calculated.trunkAlphaSource="manual";
                 }
                 if(durationCheck){
                     calculated.maxAcceptableStaticSeconds=durationCheck.limitSeconds;
@@ -1355,9 +1374,8 @@ function sectionStudyControls(key) {
                       ? '<label>Inclinación de cabeza β<select data-pmf-head-static-band><option value="">-- seleccionar --</option><option value="lt0" '+(v.staticAngleBand==="lt0"?"selected":"")+'>‹ 0°</option><option value="from0to25" '+(v.staticAngleBand==="from0to25"?"selected":"")+'>0°–25° (incluidos)</option><option value="gt25to85" '+(v.staticAngleBand==="gt25to85"?"selected":"")+'>›25°–85° (85° incluido)</option><option value="gt85" '+(v.staticAngleBand==="gt85"?"selected":"")+'>› 85°</option></select></label>'+
                         (v.staticAngleBand==="gt25to85"?'<label>Ángulo exacto de cabeza β (0° = neutra)<input type="number" min="25.01" max="85" step="0.1" data-pmf-head-static-exact value="'+escapeHtml(v.staticExactAngle ?? "")+'"></label>':'')+
                         (v.staticAngleBand==="gt25to85" && v.fullTrunkSupport===false
-                          ? (Number.isFinite(availableTrunkAlpha())
-                              ? '<div class="notice">Ángulo de tronco α reutilizado automáticamente de los datos Kinovea del estudio: '+escapeHtml(Number(availableTrunkAlpha()).toFixed(1))+'°</div>'
-                              : '<label>Ángulo de tronco α (0° = neutra)<input type="number" step="0.1" data-pmf-head-trunk-alpha value="'+escapeHtml(v.trunkAlpha ?? "")+'"></label>')
+                          ? '<label>Ángulo de tronco α (0° = neutra)<input type="number" step="0.1" data-pmf-head-trunk-alpha value="'+escapeHtml(v.trunkAlpha ?? "")+'"></label>'+
+                            '<div class="notice">Para calcular β − α en entrada manual, introduzca el ángulo α correspondiente a la misma postura observada.</div>'
                           : '')
                       : '<label>'+angleLabel+'<input type="number" step="0.1" data-pmf-manual-angle="'+def.key+'" value="'+escapeHtml(v.angle ?? "")+'"></label>')));
         const supportCell = key==="trunk" && def.key==="flexion"
@@ -1375,7 +1393,11 @@ function sectionStudyControls(key) {
             (key==="head_neck"&&def.key==="flexion"
               ? '<td><div class="pmf-cell-stack"><span class="pmf-result-empty">—</span></div></td>'
               : '<td><div class="pmf-cell-stack"><label>Frecuencia<select data-pmf-manual-frequency="'+def.key+'"><option value="lt2" '+((v.frequencyBand||"lt2")==="lt2"?"selected":"")+'>‹ 2 movimientos/minuto</option><option value="gte2" '+(v.frequencyBand==="gte2"?"selected":"")+'>≥ 2 movimientos/minuto</option></select></label></div></td>')
-          : '<td colspan="3"><div class="pmf-kinovea-note">Se utilizarán los datos Kinovea disponibles para este movimiento/postura.</div></td>';
+          : '<td colspan="3"><div class="pmf-kinovea-note">'+
+              (key==="head_neck"&&def.key==="flexion"
+                ? 'Se utilizarán los datos Kinovea de cabeza. Si es necesario calcular β − α, el programa buscará automáticamente el análisis de tronco realizado sobre el <strong>mismo vídeo original</strong>. Si no existe, no se mezclarán datos de otro vídeo y será necesario aportar α manualmente.'
+                : 'Se utilizarán los datos Kinovea disponibles para este movimiento/postura.')+
+              '</div></td>';
         return '<tr><td><strong>'+escapeHtml(def.label)+'</strong></td>'+
           '<td><div class="pmf-cell-stack"><label>Fuente<select data-pmf-movement-source="'+def.key+'"><option value="kinovea" '+(source==="kinovea"?"selected":"")+'>Kinovea</option><option value="manual" '+(source==="manual"?"selected":"")+'>Manual</option></select></label></div></td>'+
           manualCells+supportCell+'</tr>';
