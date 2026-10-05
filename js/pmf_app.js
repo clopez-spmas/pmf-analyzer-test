@@ -715,16 +715,16 @@ function classifyPMFSections(records) {
 
     for(const result of all){
         if(!sections[result.section]) continue;
+        const variableKey=movementKeyForResult(result.section,result.measurement);
+        if(!variableKey || movementSource(result.section,variableKey)!=="kinovea") continue;
         sections[result.section].results.push(result);
         sections[result.section].traceability.push(result.traceability);
     }
 
     ["trunk","head_neck","lower_right","lower_left"].forEach(key=>{
-        const study=ensureSectionStudy(key);
-        if(study.source==="manual"){
-            sections[key]=buildManualSection(key);
-            return;
-        }
+        const manual=buildManualSection(key);
+        sections[key].results.push(...manual.results);
+        sections[key].traceability.push(...manual.traceability);
         const results=sections[key].results;
         const worst=PMFEngine.worstStatus(results.map(r=>({status:r.status,reason:r.reason,criterionId:r.criterionId})));
         sections[key].status=worst?.status || PMFCriteria.RESULT.NOT_EVALUATED;
@@ -877,14 +877,32 @@ function ensureSectionStudy(key) {
     pmfProject.analysis.sectionStudy = pmfProject.analysis.sectionStudy || {};
     const lower = key === "lower_right" || key === "lower_left";
     const current = pmfProject.analysis.sectionStudy[key] || {};
+    const legacySource = current.source === "manual" ? "manual" : "kinovea";
+    const variables = current.variables && typeof current.variables === "object" ? current.variables : {};
+    (PMF_SECTION_MANUAL_DEFS[key] || []).forEach(def => {
+        const previous = variables[def.key] && typeof variables[def.key] === "object" ? variables[def.key] : {};
+        variables[def.key] = {
+            ...previous,
+            source: previous.source === "manual" ? "manual" : (previous.source === "kinovea" ? "kinovea" : legacySource)
+        };
+    });
     pmfProject.analysis.sectionStudy[key] = {
-        source: current.source === "manual" ? "manual" : "kinovea",
         timeMode: current.timeMode === "percent" ? "percent" : "seconds",
         durationSeconds: Math.max(0.01, Number(current.durationSeconds) || 60),
         posture: lower ? (current.posture === "seated" ? "seated" : "standing") : undefined,
-        variables: current.variables && typeof current.variables === "object" ? current.variables : {}
+        variables
     };
     return pmfProject.analysis.sectionStudy[key];
+}
+
+function movementSource(key, variableKey) {
+    const study = ensureSectionStudy(key);
+    return study.variables?.[variableKey]?.source === "manual" ? "manual" : "kinovea";
+}
+
+function movementKeyForResult(section, measurement) {
+    const def = (PMF_SECTION_MANUAL_DEFS[section] || []).find(item => item.label === measurement);
+    return def?.key || null;
 }
 
 function manualTimeValues(study, value) {
@@ -921,19 +939,22 @@ function buildManualSection(key) {
     const study = ensureSectionStudy(key);
     const results = [];
     const vars = study.variables || {};
-    const getVar = name => ({angle:Number(vars[name]?.angle),time:Number(vars[name]?.time),frequency:Number(vars[name]?.frequency)});
+    const getVar = name => ({
+        source: vars[name]?.source === "manual" ? "manual" : "kinovea",
+        angle: vars[name]?.angle === null || vars[name]?.angle === undefined || vars[name]?.angle === "" ? null : Number(vars[name].angle),
+        time: Number(vars[name]?.time),
+        frequency: Number(vars[name]?.frequency)
+    });
 
     if (key === "trunk") {
-        const defs = PMF_SECTION_MANUAL_DEFS.trunk;
-        defs.forEach(def => {
+        PMF_SECTION_MANUAL_DEFS.trunk.forEach(def => {
             const v=getVar(def.key);
-            if(!Number.isFinite(v.angle)) return;
+            if(v.source!=="manual" || !Number.isFinite(v.angle)) return;
             const tv=manualTimeValues(study,v.time);
-            let dynCriterion;
             if(def.kind==="trunkFlex"){
                 const mk="manual.trunk.dynamic.fullSupport";
-                dynCriterion=PMFCriteria.dynamic.trunkFlexion({angle:v.angle,frequencyPerMinute:Number.isFinite(v.frequency)?v.frequency:0,fullTrunkSupport:manualValue(mk)});
-                results.push(pmfManualResult(key,"dynamic",def.label,{extremeAngle:v.angle,frequencyPerMinute:Number.isFinite(v.frequency)?v.frequency:0,criticalPercent:tv.percent,criticalSeconds:tv.seconds,totalSeconds:tv.duration},dynCriterion,mk));
+                const dyn=PMFCriteria.dynamic.trunkFlexion({angle:v.angle,frequencyPerMinute:Number.isFinite(v.frequency)?v.frequency:0,fullTrunkSupport:manualValue(mk)});
+                results.push(pmfManualResult(key,"dynamic",def.label,{extremeAngle:v.angle,frequencyPerMinute:Number.isFinite(v.frequency)?v.frequency:0,criticalPercent:tv.percent,criticalSeconds:tv.seconds,totalSeconds:tv.duration},dyn,mk));
                 if(tv.seconds>PMFCriteria.LIMITS.staticMinSeconds){
                     const sk="manual.trunk.static.fullSupport";
                     const st=PMFCriteria.static.trunk({motion:"flexion",angle:v.angle,fullTrunkSupport:manualValue(sk),durationCriterionResult:pmfProject.analysis?.manualConfirmations?.["manual.trunk.static.durationCriterion"]?.value ?? null});
@@ -941,8 +962,8 @@ function buildManualSection(key) {
                 }
             } else {
                 const fn=def.kind==="trunkLateral"?PMFCriteria.dynamic.trunkLateral:PMFCriteria.dynamic.trunkRotation;
-                dynCriterion=fn({angle:v.angle,frequencyPerMinute:Number.isFinite(v.frequency)?v.frequency:0,criticalTimePercent:tv.percent});
-                results.push(pmfManualResult(key,"dynamic",def.label,{extremeAngle:v.angle,frequencyPerMinute:Number.isFinite(v.frequency)?v.frequency:0,criticalPercent:tv.percent,criticalSeconds:tv.seconds,totalSeconds:tv.duration},dynCriterion));
+                const dyn=fn({angle:v.angle,frequencyPerMinute:Number.isFinite(v.frequency)?v.frequency:0,criticalTimePercent:tv.percent});
+                results.push(pmfManualResult(key,"dynamic",def.label,{extremeAngle:v.angle,frequencyPerMinute:Number.isFinite(v.frequency)?v.frequency:0,criticalPercent:tv.percent,criticalSeconds:tv.seconds,totalSeconds:tv.duration},dyn));
                 if(tv.seconds>PMFCriteria.LIMITS.staticMinSeconds){
                     const st=PMFCriteria.static.trunk({motion:def.kind==="trunkLateral"?"lateral":"rotation",angle:v.angle});
                     results.push(pmfManualResult(key,"static",def.label,{totalStaticSeconds:tv.seconds,worstEpisode:{averageAngle:v.angle,duration:tv.seconds}},st));
@@ -952,7 +973,7 @@ function buildManualSection(key) {
     } else if (key === "head_neck") {
         PMF_SECTION_MANUAL_DEFS.head_neck.forEach(def => {
             const v=getVar(def.key);
-            if(!Number.isFinite(v.angle)) return;
+            if(v.source!=="manual" || !Number.isFinite(v.angle)) return;
             const tv=manualTimeValues(study,v.time);
             const fn=def.kind==="headFlex"?PMFCriteria.dynamic.headFlexion:def.kind==="headLateral"?PMFCriteria.dynamic.headLateral:PMFCriteria.dynamic.headRotation;
             const dyn=fn({angle:v.angle,frequencyPerMinute:Number.isFinite(v.frequency)?v.frequency:0,criticalTimePercent:tv.percent});
@@ -963,10 +984,9 @@ function buildManualSection(key) {
             }
         });
     } else {
-        const side=key==="lower_right"?"right":"left";
         const posture=study.posture==="seated"?"seated":"standing";
         const knee=getVar("knee");
-        if(Number.isFinite(knee.angle)){
+        if(knee.source==="manual" && Number.isFinite(knee.angle)){
             const tv=manualTimeValues(study,knee.time);
             const standingFlexion=180-knee.angle;
             const seatedExcursion=Math.abs(knee.angle-90);
@@ -991,7 +1011,7 @@ function buildManualSection(key) {
             }
         }
         const ankle=getVar("ankle");
-        if(Number.isFinite(ankle.angle)){
+        if(ankle.source==="manual" && Number.isFinite(ankle.angle)){
             const tv=manualTimeValues(study,ankle.time);
             const dyn=PMFCriteria.lowerLimb.ankleDynamic({dorsiPlantarAngle:ankle.angle,frequencyPerMinute:Number.isFinite(ankle.frequency)?ankle.frequency:0});
             results.push(pmfManualResult(key,"dynamic","Tobillo",{extremeAngle:ankle.angle,frequencyPerMinute:Number.isFinite(ankle.frequency)?ankle.frequency:0,criticalPercent:tv.percent,criticalSeconds:tv.seconds,totalSeconds:tv.duration},dyn));
@@ -1002,29 +1022,38 @@ function buildManualSection(key) {
         }
     }
 
-    const worst=PMFEngine.worstStatus(results.map(r=>({status:r.status,reason:r.reason,criterionId:r.criterionId})));
-    return {label:key,status:worst?.status || PMFCriteria.RESULT.NOT_EVALUATED,results,traceability:results.map(r=>r.traceability)};
+    return {label:key,results,traceability:results.map(r=>r.traceability)};
 }
 
 function sectionStudyControls(key) {
     const study=ensureSectionStudy(key);
     const defs=PMF_SECTION_MANUAL_DEFS[key] || [];
     const lower=key==="lower_right"||key==="lower_left";
+    const hasManual=defs.some(def=>movementSource(key,def.key)==="manual");
     const unitLabel=study.timeMode==="percent"?"% del tiempo analizado en el que se mantiene esta postura":"segundos";
+
     const rows=defs.map(def=>{
         const v=study.variables?.[def.key] || {};
+        const source=v.source==="manual"?"manual":"kinovea";
         const angleLabel=def.kind==="knee"?"Ángulo interno (°)":def.kind==="ankle"?"Ángulo tobillo (°; + dorsiflexión / − plantar)":"Ángulo (°)";
-        return '<tr><td><strong>'+escapeHtml(def.label)+'</strong></td><td><label>'+angleLabel+'<input type="number" step="0.1" data-pmf-manual-angle="'+def.key+'" value="'+escapeHtml(v.angle ?? "")+'"></label></td><td><label>Tiempo ('+unitLabel+')<input type="number" min="0" step="0.1" data-pmf-manual-time="'+def.key+'" value="'+escapeHtml(v.time ?? "")+'"></label></td><td><label>Frecuencia (mov/min)<input type="number" min="0" step="0.01" data-pmf-manual-frequency="'+def.key+'" value="'+escapeHtml(v.frequency ?? "")+'"></label></td></tr>';
+        const manualCells=source==="manual"
+          ? '<td><label>'+angleLabel+'<input type="number" step="0.1" data-pmf-manual-angle="'+def.key+'" value="'+escapeHtml(v.angle ?? "")+'"></label></td>'+
+            '<td><label>Tiempo ('+unitLabel+')<input type="number" min="0" step="0.1" data-pmf-manual-time="'+def.key+'" value="'+escapeHtml(v.time ?? "")+'"></label></td>'+
+            '<td><label>Frecuencia (mov/min)<input type="number" min="0" step="0.01" data-pmf-manual-frequency="'+def.key+'" value="'+escapeHtml(v.frequency ?? "")+'"></label></td>'
+          : '<td colspan="3"><div class="notice">Se utilizarán los datos Kinovea disponibles para este movimiento/postura.</div></td>';
+        return '<tr><td><strong>'+escapeHtml(def.label)+'</strong></td>'+
+          '<td><label>Fuente<select data-pmf-movement-source="'+def.key+'"><option value="kinovea" '+(source==="kinovea"?"selected":"")+'>Kinovea</option><option value="manual" '+(source==="manual"?"selected":"")+'>Manual</option></select></label></td>'+
+          manualCells+'</tr>';
     }).join("");
 
     return '<div class="pmf-study-controls" data-pmf-study-section="'+key+'">'+
-      '<div class="form-grid">'+
-        '<label>Fuente de estudio<select data-pmf-section-source><option value="kinovea" '+(study.source==="kinovea"?"selected":"")+'>Kinovea</option><option value="manual" '+(study.source==="manual"?"selected":"")+'>Manual</option></select></label>'+
+      (hasManual?'<div class="form-grid">'+
         '<label>Unidad de tiempo<select data-pmf-time-mode><option value="seconds" '+(study.timeMode==="seconds"?"selected":"")+'>Segundos</option><option value="percent" '+(study.timeMode==="percent"?"selected":"")+'>% del tiempo analizado en el que se mantiene esta postura</option></select></label>'+
-        (study.source==="manual"?'<label>Duración analizada (s)<input type="number" min="0.01" step="0.1" data-pmf-duration value="'+escapeHtml(study.durationSeconds)+'"></label>':'')+
-        (study.source==="manual"&&lower?'<label>Postura de referencia<select data-pmf-posture><option value="standing" '+(study.posture==="standing"?"selected":"")+'>De pie</option><option value="seated" '+(study.posture==="seated"?"selected":"")+'>Sentado/a</option></select></label>':'')+
-      '</div>'+
-      (study.source==="manual"?'<div class="result-table-wrap"><table class="compact-table"><thead><tr><th>Movimiento</th><th>Ángulo</th><th>Tiempo</th><th>Frecuencia</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="notice">Una postura manual se considera estática cuando el tiempo introducido supera 4 segundos. El porcentaje se calcula respecto a la duración analizada indicada para este segmento.</div>':'<div class="notice">Se utilizarán los cálculos obtenidos de los JSON de Kinovea que aporten los marcadores necesarios para este segmento.</div>')+
+        '<label>Duración analizada (s)<input type="number" min="0.01" step="0.1" data-pmf-duration value="'+escapeHtml(study.durationSeconds)+'"></label>'+
+        (lower && movementSource(key,"knee")==="manual"?'<label>Postura de referencia<select data-pmf-posture><option value="standing" '+(study.posture==="standing"?"selected":"")+'>De pie</option><option value="seated" '+(study.posture==="seated"?"selected":"")+'>Sentado/a</option></select></label>':'')+
+      '</div>':'')+
+      '<div class="result-table-wrap"><table class="compact-table"><thead><tr><th>Movimiento / postura</th><th>Fuente</th><th>Ángulo</th><th>Tiempo</th><th>Frecuencia</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+      (hasManual?'<div class="notice">Cada movimiento/postura puede estudiarse de forma independiente. Los datos manuales se combinan con los resultados Kinovea del resto del segmento. Una postura manual se considera estática cuando el tiempo introducido supera 4 segundos.</div>':'<div class="notice">Todos los movimientos/posturas de este segmento se obtendrán de Kinovea mientras mantengan esta fuente seleccionada.</div>')+
     '</div>';
 }
 
@@ -1033,15 +1062,17 @@ function bindSectionStudyControls() {
         const key=block.dataset.pmfStudySection;
         const study=ensureSectionStudy(key);
         const rerender=()=>{
-            if(study.source==="manual") pmfProject.analysis.bodySections[key]=buildManualSection(key);
-            else {
-                const ordered=[...(pmfProject.kinoveaFiles||[])].sort((a,b)=>Number(a.videoIndex)-Number(b.videoIndex));
-                pmfProject.analysis.bodySections=classifyPMFSections(ordered);
-            }
+            const ordered=[...(pmfProject.kinoveaFiles||[])].sort((a,b)=>Number(a.videoIndex)-Number(b.videoIndex));
+            pmfProject.analysis.bodySections=classifyPMFSections(ordered);
             touchProject(false);
             renderAnalysisResults();
         };
-        block.querySelector("[data-pmf-section-source]")?.addEventListener("change",e=>{study.source=e.target.value==="manual"?"manual":"kinovea";rerender();});
+        block.querySelectorAll("[data-pmf-movement-source]").forEach(el=>el.addEventListener("change",()=>{
+            const k=el.dataset.pmfMovementSource;
+            study.variables[k]=study.variables[k]||{};
+            study.variables[k].source=el.value==="manual"?"manual":"kinovea";
+            rerender();
+        }));
         block.querySelector("[data-pmf-time-mode]")?.addEventListener("change",e=>{study.timeMode=e.target.value==="percent"?"percent":"seconds";rerender();});
         block.querySelector("[data-pmf-duration]")?.addEventListener("change",e=>{study.durationSeconds=Math.max(.01,Number(e.target.value)||60);rerender();});
         block.querySelector("[data-pmf-posture]")?.addEventListener("change",e=>{study.posture=e.target.value==="seated"?"seated":"standing";rerender();});
@@ -1051,7 +1082,6 @@ function bindSectionStudyControls() {
     });
 }
 
-
 function renderAnalysisResults() {
     renderVideoJsonSummary();
     const sections = pmfProject.analysis?.bodySections || {};
@@ -1060,8 +1090,7 @@ function renderAnalysisResults() {
         const container = document.getElementById(id);
         if (!container) return;
         const study = ensureSectionStudy(key);
-        const section = study.source === "manual" ? buildManualSection(key) : sections[key];
-        if (study.source === "manual") pmfProject.analysis.bodySections[key] = section;
+        const section = sections[key];
         const controls = sectionStudyControls(key);
         if (!section) {
             container.innerHTML = controls + '<div class="pmf-summary"><p>Sin datos suficientes para evaluar este segmento corporal.</p></div>';
@@ -1082,7 +1111,7 @@ function renderAnalysisResults() {
             return '<div class="pmf-result-card"><div class="pmf-result-card-head"><span>' + (r.videoNumber==="Manual" ? "MANUAL" : "Vídeo " + r.videoNumber) + ' · ' + escapeHtml(r.mode) + '</span><strong>' + escapeHtml(r.status) + '</strong></div><h3>' + escapeHtml(r.measurement) + '</h3><p>' + escapeHtml(r.reason) + '</p>' + (metrics ? '<div class="pmf-result-metrics">' + escapeHtml(metrics) + '</div>' : '') + manual + '</div>';
         }).join('');
         const reason = section.reason ? '<div class="pmf-callout"><span>' + escapeHtml(section.reason) + '</span></div>' : '';
-        container.innerHTML = controls + '<div class="pmf-section-status"><span>Resultado del segmento</span><strong>' + escapeHtml(section.status || 'NO_EVALUADO') + '</strong></div>' + (details || reason || '<div class="pmf-summary"><p>No hay mediciones válidas para este segmento.</p></div>') + '<p class="pmf-note">' + (study.source==="kinovea" ? 'El resultado corresponde a la situación más desfavorable entre los vídeos que aportan datos válidos para este segmento.' : 'El resultado se calcula a partir de los datos introducidos manualmente para este segmento.') + ' No se calcula un resultado global de la tarea.</p>';
+        container.innerHTML = controls + '<div class="pmf-section-status"><span>Resultado del segmento</span><strong>' + escapeHtml(section.status || 'NO_EVALUADO') + '</strong></div>' + (details || reason || '<div class="pmf-summary"><p>No hay mediciones válidas para este segmento.</p></div>') + '<p class="pmf-note">El resultado del segmento combina las fuentes seleccionadas para cada movimiento/postura y toma la situación más desfavorable entre las mediciones válidas. No se calcula un resultado global de la tarea.</p>';
     });
     bindManualControls();
     bindSectionStudyControls();
