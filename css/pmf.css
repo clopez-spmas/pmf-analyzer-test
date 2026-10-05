@@ -125,6 +125,11 @@ th{background:#f1f5f9;color:#005a9c}
   margin:0;
   line-height:1.25;
 }
+/* La primera fila de controles debe arrancar a la misma altura en todas
+   las columnas, aunque el texto de la etiqueta ocupe una, dos o tres líneas. */
+.pmf-cell-stack > label:first-child{
+  grid-template-rows:54px 40px;
+}
 .pmf-cell-stack label > input,
 .pmf-cell-stack label > select{
   align-self:end;
