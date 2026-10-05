@@ -43,10 +43,10 @@ function pmfCreateEmptyProject() {
 
 function pmfNormalizeProject(candidate) {
     if (!candidate || typeof candidate !== "object") {
-        throw new Error("El archivo no contiene un proyecto válido.");
+        throw new Error("El archivo no contiene un estudio válido.");
     }
     if (candidate.schema !== PMF_PROJECT_SCHEMA) {
-        throw new Error("El archivo no corresponde a un proyecto de Posturas y Movimientos Forzados.");
+        throw new Error("El archivo no corresponde a un estudio de Posturas y Movimientos Forzados.");
     }
 
     const base = pmfCreateEmptyProject();
