@@ -223,7 +223,7 @@ function renderVideoJsonSummary() {
         const frames = Array.isArray(record?.extracted?.frames) ? record.extracted.frames : [];
         const times = frames.map(frame => Number(frame?.time)).filter(Number.isFinite);
         const duration = times.length ? Math.max(...times) - Math.min(...times) : 0;
-        const cfg = record?.processing?.kinoveaConfig || {view:'unspecified',task:'',range:{mode:'all',start:0,end:duration,cycles:1}};
+        const cfg = record?.processing?.kinoveaConfig || {task:'',range:{mode:'all',start:0,end:duration,cycles:1}};
         const range = cfg.range || {mode:'all',start:0,end:duration,cycles:1};
         let period = 'Todo el vídeo · ' + duration.toFixed(2).replace('.', ',') + ' s';
         if (range.mode === 'interval') {
