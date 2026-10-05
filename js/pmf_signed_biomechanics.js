@@ -101,13 +101,17 @@ function pmfFrameMeasurements(frame) {
     };
 
     // Convención PMF:
-    // tronco sagital: flexión hacia delante positiva, extensión negativa.
+    // Postura neutra estandarizada = 0°.
+    // Tronco sagital: flexión hacia delante positiva, extensión negativa.
+    // Cabeza sagital: inclinación respecto a la postura neutra de 0°.
+    // La flexo-extensión de cuello se obtiene posteriormente como beta - alfa,
+    // usando ambas desviaciones respecto a esta misma referencia neutra.
     if(pmfFinitePoint(hip)&&pmfFinitePoint(shoulder)){
         const dx=Number(shoulder.x)-Number(hip.x);
         const dy=-(Number(shoulder.y)-Number(hip.y));
         if(!(dx===0&&dy===0)){
             const forwardPositive=Math.atan2(dx,dy)*180/Math.PI;
-            push("trunk_flexion_signed",{value:forwardPositive,valid:true},{section:"trunk",motion:"flexion_extension"});
+            push("trunk_flexion_signed",{value:forwardPositive,valid:true},{section:"trunk",motion:"flexion_extension",reference:"neutral_0deg",signConvention:"positive=forward_flexion; negative=extension"});
             push("trunk_lateral_signed",pmfSignedSegmentAngleVertical(hip,shoulder),{section:"trunk",motion:"lateral"});
         }
     }
@@ -118,7 +122,7 @@ function pmfFrameMeasurements(frame) {
     }
 
     if(pmfFinitePoint(neck)&&pmfFinitePoint(head)){
-        push("head_flexion_signed",pmfSignedSegmentAngleVertical(neck,head),{section:"head_neck",motion:"head_flexion"});
+        push("head_flexion_signed",pmfSignedSegmentAngleVertical(neck,head),{section:"head_neck",motion:"head_flexion",reference:"neutral_0deg",signConvention:"deviation_from_neutral"});
         push("head_lateral_signed",pmfSignedSegmentAngleVertical(neck,head),{section:"head_neck",motion:"lateral"});
     }
 
