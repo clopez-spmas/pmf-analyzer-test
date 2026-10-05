@@ -148,7 +148,7 @@ function pmfFrameMeasurements(frame) {
     }
 
     if(pmfFinitePoint(leftEar)&&pmfFinitePoint(rightEar)){
-        push("head_axial_rotation_signed",pmfSignedSegmentAngleHorizontal(leftEar,rightEar),{section:"head_neck",motion:"rotation"});
+        push("head_axial_rotation_signed",pmfSignedSegmentAngleHorizontal(leftEar,rightEar),{section:"head_neck",motion:"rotation",reference:"neutral_0deg",signConvention:"positive=right; negative=left",landmarks:"left_ear->right_ear"});
     }
 
     const limbDefs=[
