@@ -668,6 +668,59 @@ function classifyRecord(record) {
 
     // CABEZA/CUELLO ESTÁTICO
     {
+        const headSeries=getSeriesFromRecord(record,"head_flexion_signed");
+        if(headSeries.length){
+            const trunkSeries=getSeriesFromRecord(record,"trunk_flexion_signed");
+            const neckSeries=differenceSeries(headSeries,trunkSeries);
+            const supports=headStaticSupportValues();
+            const bands=[
+                ["Extensión de cabeza",v=>v<0,"lt0"],
+                ["Flexión de cabeza · 0°–25°",v=>v>=0&&v<=25,"from0to25"],
+                ["Flexión de cabeza · >25°–85°",v=>v>25&&v<=85,"gt25to85"],
+                ["Flexión de cabeza · >85°",v=>v>85,"gt85"]
+            ];
+            bands.forEach(([label,pred,band])=>{
+                const st=analyzeStaticSeries(headSeries,pred);
+                if(!st.episodes.length) return;
+                let angle=st.worstEpisode?.averageAngle;
+                if(band==="gt25to85"){
+                    const ep=st.worstEpisode;
+                    angle=Number(ep?.maxAngle);
+                    const neckInEpisode=(neckSeries||[]).filter(p=>Number(p.timestamp)>=Number(ep?.startTime)&&Number(p.timestamp)<=Number(ep?.endTime));
+                    let neckAngle=null;
+                    if(neckInEpisode.length){
+                        const adverse=neckInEpisode.find(p=>Number(p.value)<0||Number(p.value)>25);
+                        neckAngle=Number((adverse||neckInEpisode[0]).value);
+                    }
+                    const durationCheck=supports.fullTrunkSupport===true
+                        ? headStaticDurationCriterion(angle,st.totalStaticSeconds)
+                        : null;
+                    const criterion=PMFCriteria.static.head({
+                        motion:"head_flexion",
+                        angle,
+                        fullHeadSupport:supports.fullHeadSupport,
+                        fullTrunkSupport:supports.fullTrunkSupport,
+                        neckFlexionAngle:neckAngle,
+                        durationCriterionResult:durationCheck?.result ?? null
+                    });
+                    if(Number.isFinite(neckAngle)) st.neckFlexionAngle=neckAngle;
+                    if(durationCheck){
+                        st.maxAcceptableStaticSeconds=durationCheck.limitSeconds;
+                        st.durationCriterionResult=durationCheck.result;
+                    }
+                    out.push(classifyMeasurement({record,section:"head_neck",mode:"static",measurement:"Flexión / extensión de cabeza",calculated:st,criterionResult:criterion}));
+                    return;
+                }
+                const criterion=PMFCriteria.static.head({
+                    motion:"head_flexion",
+                    angle,
+                    fullHeadSupport:supports.fullHeadSupport,
+                    fullTrunkSupport:supports.fullTrunkSupport
+                });
+                out.push(classifyMeasurement({record,section:"head_neck",mode:"static",measurement:"Flexión / extensión de cabeza",calculated:st,criterionResult:criterion}));
+            });
+        }
+
         const defs=[
             ["head_lateral_signed","Lateralización de cabeza","lateral",v=>v<-10||v>10],
             ["head_axial_rotation_signed","Rotación axial de cabeza","rotation",v=>v<-45||v>45]
@@ -999,6 +1052,52 @@ function trunkStaticDurationCriterion(angle, observedSeconds) {
     };
 }
 
+function headStaticBandAngle(band, exactAngle = null) {
+    if (band === "gt25to85") {
+        const a = Number(exactAngle);
+        return Number.isFinite(a) && a > 25 && a <= 85 ? a : 26;
+    }
+    return ({lt0:-1,from0to25:25,gt85:86})[band] ?? null;
+}
+
+function headNeckFlexBandAngle(band) {
+    return ({lt0:-1,from0to25:25,gt25:26})[band] ?? null;
+}
+
+function headStaticMaxAcceptableSeconds(angle) {
+    const a=Number(angle);
+    if(!Number.isFinite(a) || a<=25 || a>85) return null;
+    const minutes=8-((a-25)*7/60);
+    return Math.max(0,minutes*60);
+}
+
+function headStaticDurationCriterion(angle, observedSeconds) {
+    const limitSeconds=headStaticMaxAcceptableSeconds(angle);
+    const actual=Number(observedSeconds);
+    if(!Number.isFinite(limitSeconds)||!Number.isFinite(actual)) return null;
+    return {
+        result:actual<=limitSeconds?PMFCriteria.RESULT.ACCEPTABLE:PMFCriteria.RESULT.NOT_ACCEPTABLE,
+        limitSeconds,
+        actualSeconds:actual
+    };
+}
+
+function headStaticSupportValues() {
+    const v=ensureSectionStudy("head_neck")?.variables?.flexion || {};
+    return {
+        fullHeadSupport:v.fullHeadSupport===true?true:v.fullHeadSupport===false?false:null,
+        fullTrunkSupport:v.fullTrunkSupport===true?true:v.fullTrunkSupport===false?false:null
+    };
+}
+
+function differenceSeries(aSeries,bSeries) {
+    const bMap=new Map((Array.isArray(bSeries)?bSeries:[]).map(p=>[Number(p.timestamp),Number(p.value)]));
+    return (Array.isArray(aSeries)?aSeries:[]).flatMap(p=>{
+        const t=Number(p.timestamp), a=Number(p.value), b=bMap.get(t);
+        return Number.isFinite(a)&&Number.isFinite(b)?[{timestamp:t,value:a-b,valid:true,frame_index:p.frame_index??null}]:[];
+    });
+}
+
 function manualTimeValues(study, value) {
     const duration = Math.max(0.01, Number(study.durationSeconds) || 60);
     const raw = Math.max(0, Number(value) || 0);
@@ -1041,7 +1140,9 @@ function buildManualSection(key) {
                 ? trunkLateralBandAngle(vars[name]?.angleBand)
                 : (name === "rotation" && key === "trunk"
                     ? trunkRotationBandAngle(vars[name]?.angleBand)
-                    : (vars[name]?.angle === null || vars[name]?.angle === undefined || vars[name]?.angle === "" ? null : Number(vars[name].angle)))),
+                    : (name === "flexion" && key === "head_neck"
+                        ? headStaticBandAngle(vars[name]?.staticAngleBand, vars[name]?.staticExactAngle)
+                        : (vars[name]?.angle === null || vars[name]?.angle === undefined || vars[name]?.angle === "" ? null : Number(vars[name].angle))))),
         time: Number(vars[name]?.time),
         frequencyBand: vars[name]?.frequencyBand === "gte2" ? "gte2" : "lt2",
         frequency: vars[name]?.frequencyBand === "gte2" ? 2 : 0
@@ -1099,10 +1200,41 @@ function buildManualSection(key) {
             const v=getVar(def.key);
             if(v.source!=="manual" || !Number.isFinite(v.angle)) return;
             const tv=manualTimeValues(study,v.time);
-            const fn=def.kind==="headFlex"?PMFCriteria.dynamic.headFlexion:def.kind==="headLateral"?PMFCriteria.dynamic.headLateral:PMFCriteria.dynamic.headRotation;
+
+            if(def.kind==="headFlex"){
+                if(tv.seconds<=PMFCriteria.LIMITS.staticMinSeconds) return;
+                const raw=vars.flexion||{};
+                const supports=headStaticSupportValues();
+                const neckAngle=headNeckFlexBandAngle(raw.neckFlexBand);
+                const exactAngle=raw.staticAngleBand==="gt25to85" ? Number(raw.staticExactAngle) : v.angle;
+                const durationCheck=raw.staticAngleBand==="gt25to85" && supports.fullTrunkSupport===true
+                    ? headStaticDurationCriterion(exactAngle,tv.seconds)
+                    : null;
+                const st=PMFCriteria.static.head({
+                    motion:"head_flexion",
+                    angle:Number.isFinite(exactAngle)?exactAngle:v.angle,
+                    fullHeadSupport:supports.fullHeadSupport,
+                    fullTrunkSupport:supports.fullTrunkSupport,
+                    neckFlexionAngle:neckAngle,
+                    durationCriterionResult:durationCheck?.result ?? null
+                });
+                const calculated={
+                    totalStaticSeconds:tv.seconds,
+                    worstEpisode:{averageAngle:Number.isFinite(exactAngle)?exactAngle:v.angle,duration:tv.seconds}
+                };
+                if(Number.isFinite(neckAngle)) calculated.neckFlexionAngle=neckAngle;
+                if(durationCheck){
+                    calculated.maxAcceptableStaticSeconds=durationCheck.limitSeconds;
+                    calculated.durationCriterionResult=durationCheck.result;
+                }
+                results.push(pmfManualResult(key,"static",def.label,calculated,st));
+                return;
+            }
+
+            const fn=def.kind==="headLateral"?PMFCriteria.dynamic.headLateral:PMFCriteria.dynamic.headRotation;
             const dyn=fn({angle:v.angle,frequencyPerMinute:Number.isFinite(v.frequency)?v.frequency:0,criticalTimePercent:tv.percent});
             results.push(pmfManualResult(key,"dynamic",def.label,{extremeAngle:v.angle,frequencyPerMinute:Number.isFinite(v.frequency)?v.frequency:0,criticalPercent:tv.percent,criticalSeconds:tv.seconds,totalSeconds:tv.duration},dyn));
-            if(tv.seconds>PMFCriteria.LIMITS.staticMinSeconds && def.kind!=="headFlex"){
+            if(tv.seconds>PMFCriteria.LIMITS.staticMinSeconds){
                 const st=PMFCriteria.static.head({motion:def.kind==="headLateral"?"lateral":"rotation",angle:v.angle});
                 results.push(pmfManualResult(key,"static",def.label,{totalStaticSeconds:tv.seconds,worstEpisode:{averageAngle:v.angle,duration:tv.seconds}},st));
             }
@@ -1177,14 +1309,26 @@ function sectionStudyControls(key) {
               ? '<label>Intervalo angular<select data-pmf-trunk-lateral-band><option value="">-- seleccionar --</option><option value="ltNeg10" '+(v.angleBand==="ltNeg10"?"selected":"")+'>‹ -10°</option><option value="fromNeg10to10" '+(v.angleBand==="fromNeg10to10"?"selected":"")+'>-10° a 10° (incluidos)</option><option value="gt10" '+(v.angleBand==="gt10"?"selected":"")+'>› 10°</option></select></label>'
               : (key==="trunk" && def.key==="rotation"
                   ? '<label>Intervalo angular<select data-pmf-trunk-rotation-band><option value="">-- seleccionar --</option><option value="ltNeg10" '+(v.angleBand==="ltNeg10"?"selected":"")+'>‹ -10°</option><option value="fromNeg10to10" '+(v.angleBand==="fromNeg10to10"?"selected":"")+'>-10° a 10° (incluidos)</option><option value="gt10" '+(v.angleBand==="gt10"?"selected":"")+'>› 10°</option></select></label>'
-                  : '<label>'+angleLabel+'<input type="number" step="0.1" data-pmf-manual-angle="'+def.key+'" value="'+escapeHtml(v.angle ?? "")+'"></label>'));
+                  : (key==="head_neck" && def.key==="flexion"
+                      ? '<label>Inclinación de cabeza β<select data-pmf-head-static-band><option value="">-- seleccionar --</option><option value="lt0" '+(v.staticAngleBand==="lt0"?"selected":"")+'>‹ 0°</option><option value="from0to25" '+(v.staticAngleBand==="from0to25"?"selected":"")+'>0°–25° (incluidos)</option><option value="gt25to85" '+(v.staticAngleBand==="gt25to85"?"selected":"")+'>›25°–85° (85° incluido)</option><option value="gt85" '+(v.staticAngleBand==="gt85"?"selected":"")+'>› 85°</option></select></label>'+
+                        (v.staticAngleBand==="gt25to85" && v.fullTrunkSupport===true?'<label>Ángulo observado exacto (›25° y ≤85°)<input type="number" min="25.01" max="85" step="0.1" data-pmf-head-static-exact value="'+escapeHtml(v.staticExactAngle ?? "")+'"></label>':'')+
+                        (v.staticAngleBand==="gt25to85" && v.fullTrunkSupport===false?'<label>Flexo-extensión de cuello (β−α)<select data-pmf-neck-flex-band><option value="">-- seleccionar --</option><option value="lt0" '+(v.neckFlexBand==="lt0"?"selected":"")+'>‹ 0°</option><option value="from0to25" '+(v.neckFlexBand==="from0to25"?"selected":"")+'>0°–25° (incluidos)</option><option value="gt25" '+(v.neckFlexBand==="gt25"?"selected":"")+'>› 25°</option></select></label>':'')
+                      : '<label>'+angleLabel+'<input type="number" step="0.1" data-pmf-manual-angle="'+def.key+'" value="'+escapeHtml(v.angle ?? "")+'"></label>')));
         const supportCell = key==="trunk" && def.key==="flexion"
           ? '<td><div class="pmf-cell-stack"><label>Soporte completo<select data-pmf-trunk-flexion-support><option value="">-- seleccionar --</option><option value="true" '+(v.fullSupport===true?"selected":"")+'>Con soporte</option><option value="false" '+(v.fullSupport===false?"selected":"")+'>Sin soporte</option></select></label></div></td>'
-          : '<td><div class="pmf-cell-stack"><span class="pmf-result-empty">—</span></div></td>';
+          : (key==="head_neck" && def.key==="flexion"
+              ? '<td><div class="pmf-cell-stack">'+
+                ((source==="kinovea"||v.staticAngleBand==="lt0")?'<label>Soporte completo de cabeza<select data-pmf-head-support><option value="">-- seleccionar --</option><option value="true" '+(v.fullHeadSupport===true?"selected":"")+'>Con soporte</option><option value="false" '+(v.fullHeadSupport===false?"selected":"")+'>Sin soporte</option></select></label>':'')+
+                ((source==="kinovea"||v.staticAngleBand==="gt25to85")?'<label>Soporte completo del tronco<select data-pmf-head-trunk-support><option value="">-- seleccionar --</option><option value="true" '+(v.fullTrunkSupport===true?"selected":"")+'>Con soporte</option><option value="false" '+(v.fullTrunkSupport===false?"selected":"")+'>Sin soporte</option></select></label>':'')+
+                ((!source==="kinovea"&&v.staticAngleBand!=="lt0"&&v.staticAngleBand!=="gt25to85")?'<span class="pmf-result-empty">—</span>':'')+
+                '</div></td>'
+              : '<td><div class="pmf-cell-stack"><span class="pmf-result-empty">—</span></div></td>');
         const manualCells=source==="manual"
           ? '<td><div class="pmf-cell-stack">'+angleControl+'</div></td>'+
             '<td><div class="pmf-cell-stack"><label>Tiempo ('+unitLabel+')<input type="number" min="0" step="0.1" data-pmf-manual-time="'+def.key+'" value="'+escapeHtml(v.time ?? "")+'"></label></div></td>'+
-            '<td><div class="pmf-cell-stack"><label>Frecuencia<select data-pmf-manual-frequency="'+def.key+'"><option value="lt2" '+((v.frequencyBand||"lt2")==="lt2"?"selected":"")+'>‹ 2 movimientos/minuto</option><option value="gte2" '+(v.frequencyBand==="gte2"?"selected":"")+'>≥ 2 movimientos/minuto</option></select></label></div></td>'
+            (key==="head_neck"&&def.key==="flexion"
+              ? '<td><div class="pmf-cell-stack"><span class="pmf-result-empty">—</span></div></td>'
+              : '<td><div class="pmf-cell-stack"><label>Frecuencia<select data-pmf-manual-frequency="'+def.key+'"><option value="lt2" '+((v.frequencyBand||"lt2")==="lt2"?"selected":"")+'>‹ 2 movimientos/minuto</option><option value="gte2" '+(v.frequencyBand==="gte2"?"selected":"")+'>≥ 2 movimientos/minuto</option></select></label></div></td>')
           : '<td colspan="3"><div class="pmf-kinovea-note">Se utilizarán los datos Kinovea disponibles para este movimiento/postura.</div></td>';
         return '<tr><td><strong>'+escapeHtml(def.label)+'</strong></td>'+
           '<td><div class="pmf-cell-stack"><label>Fuente<select data-pmf-movement-source="'+def.key+'"><option value="kinovea" '+(source==="kinovea"?"selected":"")+'>Kinovea</option><option value="manual" '+(source==="manual"?"selected":"")+'>Manual</option></select></label></div></td>'+
@@ -1247,6 +1391,11 @@ function bindSectionStudyControls() {
         block.querySelector("[data-pmf-trunk-lateral-band]")?.addEventListener("change",e=>{study.variables.lateral=study.variables.lateral||{};study.variables.lateral.angleBand=e.target.value||null;delete study.variables.lateral.angle;rerender();});
         block.querySelector("[data-pmf-trunk-rotation-band]")?.addEventListener("change",e=>{study.variables.rotation=study.variables.rotation||{};study.variables.rotation.angleBand=e.target.value||null;delete study.variables.rotation.angle;rerender();});
         block.querySelector("[data-pmf-trunk-flexion-support]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.fullSupport=e.target.value==="true"?true:e.target.value==="false"?false:null;rerender();});
+        block.querySelector("[data-pmf-head-static-band]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.staticAngleBand=e.target.value||null;if(e.target.value!=="gt25to85"){delete study.variables.flexion.staticExactAngle;delete study.variables.flexion.fullTrunkSupport;delete study.variables.flexion.neckFlexBand;}if(e.target.value!=="lt0")delete study.variables.flexion.fullHeadSupport;rerender();});
+        block.querySelector("[data-pmf-head-static-exact]")?.addEventListener("change",e=>{const a=Number(e.target.value);study.variables.flexion=study.variables.flexion||{};study.variables.flexion.staticExactAngle=Number.isFinite(a)&&a>25&&a<=85?a:null;rerender();});
+        block.querySelector("[data-pmf-neck-flex-band]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.neckFlexBand=e.target.value||null;rerender();});
+        block.querySelector("[data-pmf-head-support]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.fullHeadSupport=e.target.value==="true"?true:e.target.value==="false"?false:null;rerender();});
+        block.querySelector("[data-pmf-head-trunk-support]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.fullTrunkSupport=e.target.value==="true"?true:e.target.value==="false"?false:null;if(study.variables.flexion.fullTrunkSupport===true)delete study.variables.flexion.neckFlexBand;else delete study.variables.flexion.staticExactAngle;rerender();});
         block.querySelectorAll("[data-pmf-manual-angle]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pmfManualAngle;study.variables[k]=study.variables[k]||{};study.variables[k].angle=el.value===""?null:Number(el.value);rerender();}));
         block.querySelectorAll("[data-pmf-manual-time]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pmfManualTime;study.variables[k]=study.variables[k]||{};study.variables[k].time=el.value===""?0:Number(el.value);rerender();}));
         block.querySelectorAll("[data-pmf-manual-frequency]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pmfManualFrequency;study.variables[k]=study.variables[k]||{};study.variables[k].frequencyBand=el.value==="gte2"?"gte2":"lt2";delete study.variables[k].frequency;rerender();}));
