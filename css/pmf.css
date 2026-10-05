@@ -153,3 +153,20 @@ th{background:#f1f5f9;color:#005a9c}
   min-height:62px;
   padding-top:40px;
 }
+
+
+/* Esquemas visuales dentro de la ayuda PMF */
+.pmf-help-image-wrap{
+  margin:14px 0 16px;
+  text-align:center;
+}
+.pmf-help-image{
+  display:block;
+  width:100%;
+  max-width:900px;
+  height:auto;
+  margin:0 auto;
+  border:1px solid #d7e2ec;
+  border-radius:10px;
+  box-shadow:0 2px 8px rgba(15,43,70,.08);
+}
