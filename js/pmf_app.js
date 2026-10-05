@@ -685,7 +685,15 @@ function classifyRecord(record) {
                 let angle=st.worstEpisode?.averageAngle;
                 if(band==="gt25to85"){
                     const ep=st.worstEpisode;
-                    angle=Number(ep?.maxAngle);
+
+                    // Igual que en tronco: el tiempo se suma entre todos los
+                    // episodios estáticos del rango y para el gráfico se usa
+                    // el ángulo más desfavorable detectado en cualquiera de ellos.
+                    const episodeMaxAngles=st.episodes
+                        .map(e=>Number(e.maxAngle))
+                        .filter(Number.isFinite);
+                    angle=episodeMaxAngles.length ? Math.max(...episodeMaxAngles) : Number(ep?.maxAngle);
+
                     const neckInEpisode=(neckSeries||[]).filter(p=>Number(p.timestamp)>=Number(ep?.startTime)&&Number(p.timestamp)<=Number(ep?.endTime));
                     let neckAngle=null;
                     if(neckInEpisode.length){
@@ -707,6 +715,8 @@ function classifyRecord(record) {
                     if(durationCheck){
                         st.maxAcceptableStaticSeconds=durationCheck.limitSeconds;
                         st.durationCriterionResult=durationCheck.result;
+                        st.durationCriterionAngle=angle;
+                        st.durationCriterionSource="Figura 5.16 / Tabla 5.12";
                     }
                     out.push(classifyMeasurement({record,section:"head_neck",mode:"static",measurement:"Flexión / extensión de cabeza",calculated:st,criterionResult:criterion}));
                     return;
@@ -1067,7 +1077,14 @@ function headNeckFlexBandAngle(band) {
 function headStaticMaxAcceptableSeconds(angle) {
     const a=Number(angle);
     if(!Number.isFinite(a) || a<=25 || a>85) return null;
-    const minutes=8-((a-25)*7/60);
+
+    // Figura 5.16: recta de duración máxima aceptable para la cabeza
+    // entre 25° (8 min) y 85° (1 min). Se interpola linealmente,
+    // igual que se hace con el gráfico de duración del tronco.
+    const minAngle=25, maxAngle=85;
+    const maxMinutesAtMinAngle=8, maxMinutesAtMaxAngle=1;
+    const ratio=(a-minAngle)/(maxAngle-minAngle);
+    const minutes=maxMinutesAtMinAngle + ratio*(maxMinutesAtMaxAngle-maxMinutesAtMinAngle);
     return Math.max(0,minutes*60);
 }
 
@@ -1249,6 +1266,8 @@ function buildManualSection(key) {
                 if(durationCheck){
                     calculated.maxAcceptableStaticSeconds=durationCheck.limitSeconds;
                     calculated.durationCriterionResult=durationCheck.result;
+                    calculated.durationCriterionAngle=Number.isFinite(exactAngle)?exactAngle:v.angle;
+                    calculated.durationCriterionSource="Figura 5.16 / Tabla 5.12";
                 }
                 results.push(pmfManualResult(key,"static",def.label,calculated,st));
                 return;
