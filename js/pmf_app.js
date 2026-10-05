@@ -525,7 +525,7 @@ function classifyRecord(record) {
     {
         const s=getSeriesFromRecord(record,"trunk_flexion_signed");
         if(s.length){
-            const dyn=analyzeDynamicSeries(s, v=>v>=0&&v<=20, v=>v<0||v>20);
+            const dyn=analyzeDynamicSeries(s, v=>v>=1&&v<=20, v=>v<=0||v>20);
             const key=`v${record.videoNumber}.dynamic.trunk.fullSupport`;
             const criterion=PMFCriteria.dynamic.trunkFlexion({
                 angle:dyn.extremeAngle,
@@ -580,16 +580,36 @@ function classifyRecord(record) {
         });
     }
 
-    // TRONCO ESTÁTICO: se evalúan episodios >4 s.
+    // TRONCO ESTÁTICO: cada rango de flexión/extensión se evalúa por separado.
     {
         const s=getSeriesFromRecord(record,"trunk_flexion_signed");
         if(s.length){
-            const staticData=analyzeStaticSeries(s,v=>v<0||v>20);
-            if(staticData.episodes.length){
-                const angle=staticData.worstEpisode?.averageAngle ?? null;
-                const key=`v${record.videoNumber}.static.trunk.fullSupport`;
-                const support=manualValue(key);
-                const durationCheck=support===false ? trunkStaticDurationCriterion(angle,staticData.totalStaticSeconds) : null;
+            const key=`v${record.videoNumber}.static.trunk.fullSupport`;
+            const support=manualValue(key);
+
+            // Extensión: ≤0°. No se mezcla su duración con la flexión.
+            const extension=analyzeStaticSeries(s,v=>v<=0);
+            if(extension.episodes.length){
+                const angle=Math.min(...extension.episodes.map(e=>Number(e.minAngle)).filter(Number.isFinite));
+                const criterion=PMFCriteria.static.trunk({
+                    motion:"flexion",
+                    angle,
+                    fullTrunkSupport:support
+                });
+                out.push(classifyMeasurement({
+                    record,section:"trunk",mode:"static",
+                    measurement:"Flexión / extensión · ≤0°",
+                    calculated:extension,
+                    criterionResult:criterion,
+                    manualKey:key
+                }));
+            }
+
+            // Flexión >20°–60°: sumar únicamente el tiempo mantenido en este rango.
+            const midFlex=analyzeStaticSeries(s,v=>v>20&&v<=60);
+            if(midFlex.episodes.length){
+                const angle=Math.max(...midFlex.episodes.map(e=>Number(e.maxAngle)).filter(Number.isFinite));
+                const durationCheck=support===false ? trunkStaticDurationCriterion(angle,midFlex.totalStaticSeconds) : null;
                 const criterion=PMFCriteria.static.trunk({
                     motion:"flexion",
                     angle,
@@ -597,10 +617,37 @@ function classifyRecord(record) {
                     durationCriterionResult:durationCheck?.result ?? null
                 });
                 if(durationCheck){
-                    staticData.maxAcceptableStaticSeconds=durationCheck.limitSeconds;
-                    staticData.durationCriterionResult=durationCheck.result;
+                    midFlex.maxAcceptableStaticSeconds=durationCheck.limitSeconds;
+                    midFlex.durationCriterionResult=durationCheck.result;
+                    midFlex.durationCriterionAngle=angle;
                 }
-                out.push(classifyMeasurement({record,section:"trunk",mode:"static",measurement:"Flexión / extensión",calculated:staticData,criterionResult:criterion,manualKey:key}));
+                out.push(classifyMeasurement({
+                    record,section:"trunk",mode:"static",
+                    measurement:"Flexión · >20°–60°",
+                    calculated:midFlex,
+                    criterionResult:criterion,
+                    manualKey:key
+                }));
+            }
+
+            // Flexión >60°: se valora de forma independiente y es no aceptable.
+            const highFlex=analyzeStaticSeries(s,v=>v>60);
+            if(highFlex.episodes.length){
+                const rawAngle=Math.max(...highFlex.episodes.map(e=>Number(e.maxAngle)).filter(Number.isFinite));
+                const angle=rawAngle>90?90:rawAngle;
+                highFlex.evaluationAngle=angle;
+                if(rawAngle>90) highFlex.detectedMaxAngle=rawAngle;
+                const criterion=PMFCriteria.static.trunk({
+                    motion:"flexion",
+                    angle,
+                    fullTrunkSupport:support
+                });
+                out.push(classifyMeasurement({
+                    record,section:"trunk",mode:"static",
+                    measurement:"Flexión · >60°",
+                    calculated:highFlex,
+                    criterionResult:criterion
+                }));
             }
         }
     }
