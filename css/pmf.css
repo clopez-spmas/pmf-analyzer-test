@@ -88,3 +88,20 @@ th{background:#f1f5f9;color:#005a9c}
 .help-panel summary{padding:11px 13px;cursor:pointer;font-weight:700;color:#005a9c}
 .help-content{padding:0 13px 13px;color:#526477;line-height:1.5}
 .help-content p{margin:9px 0}
+
+/* Matriz visual de resultados por movimiento */
+.pmf-results-matrix{table-layout:fixed}
+.pmf-results-matrix th:first-child,.pmf-results-matrix td:first-child{width:22%}
+.pmf-results-matrix th:nth-child(2),.pmf-results-matrix th:nth-child(3),
+.pmf-results-matrix td:nth-child(2),.pmf-results-matrix td:nth-child(3){width:39%}
+.pmf-table-result{padding:10px 0;border-bottom:1px solid #e8edf2}
+.pmf-table-result:last-child{border-bottom:0}
+.pmf-result-status{display:inline-block;margin-bottom:6px;font-size:14px}
+.pmf-result-reason{font-size:13px;line-height:1.4;color:#526477}
+.pmf-result-metrics{margin-top:6px;font-size:12px;line-height:1.45;color:#718096}
+.pmf-result-empty{color:#94a3b8;font-weight:700}
+@media(max-width:760px){
+  .pmf-results-matrix{table-layout:auto}
+  .pmf-results-matrix th,.pmf-results-matrix td{min-width:180px}
+  .pmf-results-matrix th:first-child,.pmf-results-matrix td:first-child{min-width:150px}
+}
