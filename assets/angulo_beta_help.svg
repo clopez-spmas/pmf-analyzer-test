@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+<title id="title">Cómo medir el ángulo de cabeza beta</title>
+<desc id="desc">Esquema con maniquí de perfil, postura neutra, flexión y extensión para medir beta.</desc>
+<style>
+text{font-family:Arial,Helvetica,sans-serif;fill:#123f68}.title{font-size:46px;font-weight:700}.sub{font-size:22px}.h{font-size:25px;font-weight:700}.p{font-size:19px}.small{font-size:17px}.beta{font-size:33px;font-weight:700}.panel{fill:#fff;stroke:#d3e2ee;stroke-width:2}.head{fill:#ecd0aa;stroke:#4a4a4a;stroke-width:3}.neck{fill:#e5c49a;stroke:#4a4a4a;stroke-width:3}.body{fill:#e1bd90;stroke:#4a4a4a;stroke-width:3}.blue{stroke:#148ddd;stroke-width:5;stroke-dasharray:13 10}.red{stroke:#f03b35;stroke-width:6}.dot{fill:#f03b35;stroke:#fff;stroke-width:3}.pill{fill:#eaf5ff}.warn{fill:#fff5d9}</style>
+<rect width="1600" height="900" fill="#f8fbfd"/>
+<rect x="15" y="12" width="1570" height="66" rx="16" fill="#e7f4fc"/>
+<text x="40" y="58" class="title">Cómo medir el ángulo de cabeza (β)</text>
+<text x="40" y="105" class="sub">β es la desviación de la cabeza respecto a la postura neutra (0°). Mide siempre en vista lateral.</text>
+
+<rect x="15" y="130" width="385" height="500" rx="16" class="panel"/>
+<rect x="420" y="130" width="680" height="500" rx="16" class="panel"/>
+<rect x="1120" y="130" width="465" height="500" rx="16" class="panel"/>
+<text x="40" y="172" class="h">1  Vista lateral</text>
+<text x="445" y="172" class="h">2  Línea de referencia y postura neutra = 0°</text>
+<text x="1145" y="172" class="h">3  Medir la desviación</text>
+
+<!-- Manikin neutral left -->
+<g transform="translate(80,240)">
+<ellipse cx="120" cy="105" rx="90" ry="110" class="head"/>
+<path d="M62 101 Q80 66 112 60 Q146 55 184 80 Q170 120 190 148 Q163 175 124 184 Q89 180 69 151Z" fill="#ecd0aa"/>
+<path d="M170 83 q20 12 23 28 q-7 18-28 20" fill="none" stroke="#4a4a4a" stroke-width="3"/>
+<circle cx="165" cy="101" r="5" fill="#333"/>
+<path d="M95 200 L150 200 L160 260 L88 260Z" class="neck"/>
+<path d="M35 260 Q120 225 215 270 L235 360 L10 360Z" class="body"/>
+</g>
+<text x="40" y="215" class="p">Utiliza una vista de perfil en la que se vea bien la cabeza y el cuello.</text>
+
+<!-- Central neutral with markers -->
+<g transform="translate(530,255)">
+<ellipse cx="210" cy="105" rx="110" ry="125" class="head"/>
+<path d="M118 102 Q145 62 205 55 Q265 52 318 87 Q300 120 323 153 Q282 186 218 194 Q160 190 130 153Z" fill="#ecd0aa"/>
+<path d="M296 88 q24 12 28 30 q-8 20-34 23" fill="none" stroke="#4a4a4a" stroke-width="3"/>
+<circle cx="289" cy="105" r="5" fill="#333"/>
+<path d="M177 214 L247 214 L260 290 L165 290Z" class="neck"/>
+<path d="M105 290 Q220 250 340 300 L365 390 L70 390Z" class="body"/>
+<line x1="115" y1="115" x2="304" y2="115" class="blue"/>
+<line x1="120" y1="115" x2="292" y2="115" class="red"/>
+<circle cx="120" cy="115" r="10" class="dot"/><circle cx="292" cy="115" r="10" class="dot"/>
+<text x="12" y="92" class="small">Parte posterior de la cabeza</text>
+<text x="314" y="92" class="small">Frente</text>
+<text x="315" y="133" class="beta">0°</text>
+</g>
+<text x="445" y="215" class="p">Traza una línea entre la frente y la parte posterior de la cabeza, por encima de la nuca.</text>
+<text x="445" y="242" class="p">Usa siempre esas mismas zonas. En postura neutra, la línea es horizontal: β = 0°.</text>
+
+<!-- Flexion -->
+<g transform="translate(1150,265)">
+<rect x="0" y="0" width="195" height="310" rx="12" fill="#eef8ff"/>
+<text x="18" y="32" class="h" font-size="21">Flexión</text>
+<g transform="translate(10,65) rotate(22 90 100)">
+<ellipse cx="90" cy="95" rx="58" ry="72" class="head"/>
+<path d="M50 180 L115 180 L120 240 L42 240Z" class="neck"/>
+</g>
+<line x1="18" y1="145" x2="178" y2="145" class="blue"/>
+<line x1="55" y1="105" x2="160" y2="180" class="red"/>
+<circle cx="55" cy="105" r="8" class="dot"/><circle cx="160" cy="180" r="8" class="dot"/>
+<path d="M160 145 A38 38 0 0 1 145 176" fill="none" stroke="#148ddd" stroke-width="5"/>
+<text x="156" y="195" class="beta">β</text>
+<text x="42" y="286" class="beta">β = 35°</text>
+</g>
+
+<!-- Extension -->
+<g transform="translate(1365,265)">
+<rect x="0" y="0" width="195" height="310" rx="12" fill="#fff1f0"/>
+<text x="15" y="32" class="h" font-size="21">Extensión</text>
+<g transform="translate(18,68) rotate(-18 88 100)">
+<ellipse cx="88" cy="95" rx="58" ry="72" class="head"/>
+<path d="M48 180 L112 180 L120 240 L40 240Z" class="neck"/>
+</g>
+<line x1="18" y1="145" x2="178" y2="145" class="blue"/>
+<line x1="43" y1="185" x2="145" y2="90" class="red"/>
+<circle cx="43" cy="185" r="8" class="dot"/><circle cx="145" cy="90" r="8" class="dot"/>
+<path d="M145 145 A48 48 0 0 0 132 105" fill="none" stroke="#148ddd" stroke-width="5"/>
+<text x="150" y="112" class="beta">β</text>
+<text x="34" y="286" class="beta">β = −10°</text>
+</g>
+<text x="1145" y="215" class="p">Compara la línea de la cabeza con la horizontal (0°).</text>
+<text x="1145" y="242" class="p">Flexión hacia delante = positiva. Extensión hacia atrás = negativa.</text>
+
+<rect x="15" y="650" width="930" height="225" rx="16" class="panel"/>
+<text x="40" y="692" class="h">Aspectos a tener en cuenta</text>
+<text x="55" y="730" class="p">• Utiliza la postura mantenida durante más de 4 segundos.</text>
+<text x="55" y="763" class="p">• Introduce la desviación respecto a la postura neutra, no el ángulo absoluto de la herramienta.</text>
+<text x="55" y="796" class="p">• La flexión hacia delante es positiva (β &gt; 0°).</text>
+<text x="55" y="829" class="p">• La extensión hacia atrás es negativa (β &lt; 0°).</text>
+<text x="55" y="862" class="p">• Si la postura varía, selecciona la situación más desfavorable.</text>
+
+<rect x="965" y="650" width="620" height="225" rx="16" class="warn" stroke="#f2d27c"/>
+<text x="995" y="692" class="h">Importante</text>
+<text x="1010" y="730" class="p">• Mide siempre en vista lateral.</text>
+<text x="1010" y="763" class="p">• Usa siempre las mismas zonas: frente y parte posterior</text>
+<text x="1035" y="790" class="p">de la cabeza, por encima de la nuca.</text>
+<text x="1010" y="823" class="p">• Compara con la horizontal (postura neutra = 0°).</text>
+<text x="1010" y="856" class="p">• Introduce solo β, no el ángulo absoluto.</text>
+</svg>
