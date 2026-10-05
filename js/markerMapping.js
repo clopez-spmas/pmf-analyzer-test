@@ -477,12 +477,11 @@ function pmfEnsureKinoveaConfig(videoIndex) {
     const frames = Array.isArray(record?.extracted?.frames) ? record.extracted.frames : [];
     const duration = frames.length ? Math.max(...frames.map(frame => Number(frame?.time) || 0)) : 0;
     record.processing.kinoveaConfig = record.processing.kinoveaConfig || {
-        view: "unspecified",
         task: "",
         range: { mode: "all", start: 0, end: duration, cycles: 1 }
     };
     const cfg = record.processing.kinoveaConfig;
-    cfg.view = cfg.view || "unspecified";
+    if (Object.prototype.hasOwnProperty.call(cfg, "view")) delete cfg.view;
     cfg.task = String(cfg.task || "");
     cfg.range = Object.assign({mode:"all",start:0,end:duration,cycles:1}, cfg.range || {});
     cfg.range.start = Math.max(0, Number(cfg.range.start) || 0);
@@ -520,7 +519,7 @@ function pmfKinoveaConfigHtml(videoIndex) {
     const interval = cfg.range.mode === "interval";
     const cycles = cfg.range.mode === "cycles";
     return `
-        <p>Cada archivo se analiza de forma independiente. Indique la vista y, si procede, la tarea/fase observada.</p>
+        <p>Cada archivo se analiza de forma independiente. Indique, si procede, la tarea/fase observada.</p>
         <div class="form-grid pmf-kinovea-config">
             <label>Tarea / fase
                 <input type="text" data-pmf-ktask="${index}" value="${escapeMarkerText(cfg.task)}" placeholder="Opcional">
