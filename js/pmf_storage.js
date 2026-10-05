@@ -31,10 +31,18 @@ function pmfCreateEmptyProject() {
             bodySections: {},
             manualConfirmations: {},
             sectionStudy: {
-                trunk: { source: "kinovea", timeMode: "seconds", durationSeconds: 60, variables: {} },
-                head_neck: { source: "kinovea", timeMode: "seconds", durationSeconds: 60, variables: {} },
-                lower_right: { source: "kinovea", timeMode: "seconds", durationSeconds: 60, posture: "standing", variables: {} },
-                lower_left: { source: "kinovea", timeMode: "seconds", durationSeconds: 60, posture: "standing", variables: {} }
+                trunk: { timeMode: "seconds", durationSeconds: 60, variables: {
+                    flexion:{source:"kinovea"}, lateral:{source:"kinovea"}, rotation:{source:"kinovea"}
+                } },
+                head_neck: { timeMode: "seconds", durationSeconds: 60, variables: {
+                    flexion:{source:"kinovea"}, lateral:{source:"kinovea"}, rotation:{source:"kinovea"}
+                } },
+                lower_right: { timeMode: "seconds", durationSeconds: 60, posture: "standing", variables: {
+                    knee:{source:"kinovea"}, ankle:{source:"kinovea"}
+                } },
+                lower_left: { timeMode: "seconds", durationSeconds: 60, posture: "standing", variables: {
+                    knee:{source:"kinovea"}, ankle:{source:"kinovea"}
+                } }
             },
             traceability: {}
         }
