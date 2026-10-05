@@ -1320,7 +1320,7 @@ function sectionStudyControls(key) {
               ? '<td><div class="pmf-cell-stack">'+
                 ((source==="kinovea"||v.staticAngleBand==="lt0")?'<label>Soporte completo de cabeza<select data-pmf-head-support><option value="">-- seleccionar --</option><option value="true" '+(v.fullHeadSupport===true?"selected":"")+'>Con soporte</option><option value="false" '+(v.fullHeadSupport===false?"selected":"")+'>Sin soporte</option></select></label>':'')+
                 ((source==="kinovea"||v.staticAngleBand==="gt25to85")?'<label>Soporte completo del tronco<select data-pmf-head-trunk-support><option value="">-- seleccionar --</option><option value="true" '+(v.fullTrunkSupport===true?"selected":"")+'>Con soporte</option><option value="false" '+(v.fullTrunkSupport===false?"selected":"")+'>Sin soporte</option></select></label>':'')+
-                ((!source==="kinovea"&&v.staticAngleBand!=="lt0"&&v.staticAngleBand!=="gt25to85")?'<span class="pmf-result-empty">—</span>':'')+
+                ((source==="manual"&&v.staticAngleBand!=="lt0"&&v.staticAngleBand!=="gt25to85")?'<span class="pmf-result-empty">—</span>':'')+
                 '</div></td>'
               : '<td><div class="pmf-cell-stack"><span class="pmf-result-empty">—</span></div></td>');
         const manualCells=source==="manual"
