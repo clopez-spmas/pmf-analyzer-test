@@ -107,22 +107,45 @@ th{background:#f1f5f9;color:#005a9c}
 }
 
 /* Alineación uniforme de controles editables en tablas PMF */
+.pmf-study-controls .compact-table th,
 .pmf-study-controls .compact-table td{vertical-align:top}
-.pmf-study-controls .compact-table td>label{
+.pmf-cell-stack{
   display:flex;
   flex-direction:column;
+  align-items:stretch;
+  justify-content:flex-start;
+  gap:8px;
+  margin:0;
+}
+.pmf-cell-stack label{
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
   gap:6px;
   margin:0;
+  line-height:1.25;
 }
 .pmf-study-controls .compact-table input,
 .pmf-study-controls .compact-table select{
   box-sizing:border-box;
   width:100%;
-  min-height:38px;
+  min-height:40px;
+  height:40px;
   margin:0;
 }
-.pmf-study-controls .compact-table td:nth-child(3),
-.pmf-study-controls .compact-table td:nth-child(4),
-.pmf-study-controls .compact-table td:nth-child(5){
-  padding-top:8px;
+.pmf-study-controls .compact-table td{
+  padding-top:10px;
+}
+.pmf-kinovea-note{
+  min-height:40px;
+  display:flex;
+  align-items:center;
+  box-sizing:border-box;
+  margin:22px 0 0;
+  padding:0 12px;
+  border-left:3px solid #1683d8;
+}
+.pmf-cell-static-text{
+  min-height:62px;
+  padding-top:22px;
 }
