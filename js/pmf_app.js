@@ -968,6 +968,10 @@ function trunkFlexionBandAngle(band, exactAngle = null) {
     return ({lt0:0,from0to20:20,gt60to90:90,gt90:90})[band] ?? null;
 }
 
+function trunkLateralBandAngle(band) {
+    return ({ltNeg10:-11,fromNeg10to10:0,gt10:11})[band] ?? null;
+}
+
 function trunkStaticMaxAcceptableSeconds(angle) {
     const a = Number(angle);
     if (!Number.isFinite(a) || a <= 20 || a > 60) return null;
@@ -1023,7 +1027,9 @@ function buildManualSection(key) {
         source: vars[name]?.source === "manual" ? "manual" : "kinovea",
         angle: name === "flexion" && key === "trunk"
             ? trunkFlexionBandAngle(vars[name]?.angleBand, vars[name]?.exactAngle)
-            : (vars[name]?.angle === null || vars[name]?.angle === undefined || vars[name]?.angle === "" ? null : Number(vars[name].angle)),
+            : (name === "lateral" && key === "trunk"
+                ? trunkLateralBandAngle(vars[name]?.angleBand)
+                : (vars[name]?.angle === null || vars[name]?.angle === undefined || vars[name]?.angle === "" ? null : Number(vars[name].angle))),
         time: Number(vars[name]?.time),
         frequencyBand: vars[name]?.frequencyBand === "gte2" ? "gte2" : "lt2",
         frequency: vars[name]?.frequencyBand === "gte2" ? 2 : 0
@@ -1147,7 +1153,9 @@ function sectionStudyControls(key) {
         const angleControl = key==="trunk" && def.key==="flexion"
           ? '<label>Intervalo angular<select data-pmf-trunk-flexion-band><option value="">-- seleccionar --</option><option value="lt0" '+(v.angleBand==="lt0"?"selected":"")+'>≤ 0°</option><option value="from0to20" '+(v.angleBand==="from0to20"?"selected":"")+'>1°–20° (20° incluido)</option><option value="gt20to60" '+(v.angleBand==="gt20to60"?"selected":"")+'>›20°–60° (60° incluido)</option><option value="gt60to90" '+(v.angleBand==="gt60to90"?"selected":"")+'>›60°–90° (90° incluido)</option><option value="gt90" '+(v.angleBand==="gt90"?"selected":"")+'>› 90° (se evalúa como 90°)</option></select></label>'+
             (v.angleBand==="gt20to60"?'<label>Ángulo observado exacto (›20° y ≤60°)<input type="number" min="20.01" max="60" step="0.1" data-pmf-trunk-flexion-exact value="'+escapeHtml(v.exactAngle ?? "")+'"></label>':'')
-          : '<label>'+angleLabel+'<input type="number" step="0.1" data-pmf-manual-angle="'+def.key+'" value="'+escapeHtml(v.angle ?? "")+'"></label>';
+          : (key==="trunk" && def.key==="lateral"
+              ? '<label>Intervalo angular<select data-pmf-trunk-lateral-band><option value="">-- seleccionar --</option><option value="ltNeg10" '+(v.angleBand==="ltNeg10"?"selected":"")+'>‹ -10°</option><option value="fromNeg10to10" '+(v.angleBand==="fromNeg10to10"?"selected":"")+'>-10° a 10° (incluidos)</option><option value="gt10" '+(v.angleBand==="gt10"?"selected":"")+'>› 10°</option></select></label>'
+              : '<label>'+angleLabel+'<input type="number" step="0.1" data-pmf-manual-angle="'+def.key+'" value="'+escapeHtml(v.angle ?? "")+'"></label>');
         const manualCells=source==="manual"
           ? '<td>'+angleControl+'</td>'+
             '<td><label>Tiempo ('+unitLabel+')<input type="number" min="0" step="0.1" data-pmf-manual-time="'+def.key+'" value="'+escapeHtml(v.time ?? "")+'"></label></td>'+
@@ -1191,6 +1199,7 @@ function bindSectionStudyControls() {
         block.querySelector("[data-pmf-posture]")?.addEventListener("change",e=>{study.posture=e.target.value==="seated"?"seated":"standing";rerender();});
         block.querySelector("[data-pmf-trunk-flexion-band]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.angleBand=e.target.value||null;if(e.target.value!=="gt20to60")delete study.variables.flexion.exactAngle;delete study.variables.flexion.angle;rerender();});
         block.querySelector("[data-pmf-trunk-flexion-exact]")?.addEventListener("change",e=>{const a=Number(e.target.value);study.variables.flexion=study.variables.flexion||{};study.variables.flexion.exactAngle=Number.isFinite(a)&&a>20&&a<=60?a:null;rerender();});
+        block.querySelector("[data-pmf-trunk-lateral-band]")?.addEventListener("change",e=>{study.variables.lateral=study.variables.lateral||{};study.variables.lateral.angleBand=e.target.value||null;delete study.variables.lateral.angle;rerender();});
         block.querySelectorAll("[data-pmf-manual-angle]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pmfManualAngle;study.variables[k]=study.variables[k]||{};study.variables[k].angle=el.value===""?null:Number(el.value);rerender();}));
         block.querySelectorAll("[data-pmf-manual-time]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pmfManualTime;study.variables[k]=study.variables[k]||{};study.variables[k].time=el.value===""?0:Number(el.value);rerender();}));
         block.querySelectorAll("[data-pmf-manual-frequency]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pmfManualFrequency;study.variables[k]=study.variables[k]||{};study.variables[k].frequencyBand=el.value==="gte2"?"gte2":"lt2";delete study.variables[k].frequency;rerender();}));
