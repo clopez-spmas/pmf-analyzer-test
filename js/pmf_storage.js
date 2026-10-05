@@ -91,6 +91,7 @@ async function pmfBuildKinoveaRecord(file, rawJson, parsedData, videoIndex) {
         videoNumber: videoIndex + 1,
         source: {
             fileName: file?.name || null,
+            originalVideoFileName: parsedData?.originalFilename || null,
             fileSize: Number.isFinite(Number(file?.size)) ? Number(file.size) : null,
             fileLastModified: Number.isFinite(Number(file?.lastModified)) ? Number(file.lastModified) : null,
             mimeType: file?.type || "application/json",
