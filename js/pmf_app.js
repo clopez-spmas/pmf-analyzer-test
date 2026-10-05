@@ -1010,7 +1010,7 @@ function sectionStudyControls(key) {
     const study=ensureSectionStudy(key);
     const defs=PMF_SECTION_MANUAL_DEFS[key] || [];
     const lower=key==="lower_right"||key==="lower_left";
-    const unitLabel=study.timeMode==="percent"?"% del tiempo analizado":"segundos";
+    const unitLabel=study.timeMode==="percent"?"% del tiempo analizado en el que se mantiene esta postura":"segundos";
     const rows=defs.map(def=>{
         const v=study.variables?.[def.key] || {};
         const angleLabel=def.kind==="knee"?"Ángulo interno (°)":def.kind==="ankle"?"Ángulo tobillo (°; + dorsiflexión / − plantar)":"Ángulo (°)";
@@ -1020,7 +1020,7 @@ function sectionStudyControls(key) {
     return '<div class="pmf-study-controls" data-pmf-study-section="'+key+'">'+
       '<div class="form-grid">'+
         '<label>Fuente de estudio<select data-pmf-section-source><option value="kinovea" '+(study.source==="kinovea"?"selected":"")+'>Kinovea</option><option value="manual" '+(study.source==="manual"?"selected":"")+'>Manual</option></select></label>'+
-        '<label>Unidad de tiempo<select data-pmf-time-mode><option value="seconds" '+(study.timeMode==="seconds"?"selected":"")+'>Segundos</option><option value="percent" '+(study.timeMode==="percent"?"selected":"")+'>% del tiempo analizado</option></select></label>'+
+        '<label>Unidad de tiempo<select data-pmf-time-mode><option value="seconds" '+(study.timeMode==="seconds"?"selected":"")+'>Segundos</option><option value="percent" '+(study.timeMode==="percent"?"selected":"")+'>% del tiempo analizado en el que se mantiene esta postura</option></select></label>'+
         (study.source==="manual"?'<label>Duración analizada (s)<input type="number" min="0.01" step="0.1" data-pmf-duration value="'+escapeHtml(study.durationSeconds)+'"></label>':'')+
         (study.source==="manual"&&lower?'<label>Postura de referencia<select data-pmf-posture><option value="standing" '+(study.posture==="standing"?"selected":"")+'>De pie</option><option value="seated" '+(study.posture==="seated"?"selected":"")+'>Sentado/a</option></select></label>':'')+
       '</div>'+
