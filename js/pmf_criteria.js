@@ -96,10 +96,10 @@ function evaluateSymmetricDynamic({ angle, frequencyPerMinute, criticalTimePerce
     }
 
     return pmfResult(
-        t >= PMF_CRITICAL_TIME_LIMIT_PERCENT ? PMF_RESULT.NOT_ACCEPTABLE : PMF_RESULT.ACCEPTABLE,
-        t >= PMF_CRITICAL_TIME_LIMIT_PERCENT
-            ? `${label}: postura crítica durante el 60% o más del tiempo de la tarea.`
-            : `${label}: frecuencia inferior a 2 mov/min y postura crítica no superior al 60% del tiempo de la tarea.`,
+        t > PMF_CRITICAL_TIME_LIMIT_PERCENT ? PMF_RESULT.NOT_ACCEPTABLE : PMF_RESULT.ACCEPTABLE,
+        t > PMF_CRITICAL_TIME_LIMIT_PERCENT
+            ? `${label}: postura crítica durante más del 60% del tiempo de la tarea.`
+            : `${label}: frecuencia inferior a 2 mov/min y postura crítica durante el 60% o menos del tiempo de la tarea.`,
         criterionId + "_TIME",
         {angle:a,frequencyPerMinute:f,criticalTimePercent:t}
     );
