@@ -74,3 +74,11 @@ th{background:#f1f5f9;color:#005a9c}
  .screen{padding:18px}
  .marker-row{grid-template-columns:1fr}
 }
+
+/* PMF · fuente manual/Kinovea y unidades de tiempo */
+.pmf-study-controls{margin:0 0 22px;padding:18px;background:#f7fafc;border:1px solid #e2e8f0;border-radius:10px}
+.pmf-study-controls>.form-grid{margin-bottom:16px}
+.pmf-study-controls .result-table-wrap{margin-top:14px}
+.pmf-study-controls .compact-table label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:#526477}
+.pmf-study-controls .compact-table input{width:100%;min-width:110px}
+.pmf-study-controls .notice{margin-top:14px}
