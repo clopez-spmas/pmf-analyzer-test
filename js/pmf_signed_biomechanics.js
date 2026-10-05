@@ -81,6 +81,8 @@ function pmfFrameMeasurements(frame) {
     const shoulder=pmfResolve(frame,"V_SHOULDER_CENTER");
     const neck=pmfResolve(frame,"neck");
     const head=pmfResolve(frame,"V_HEAD_CENTER");
+    const headFront=pmfResolve(frame,"head_front");
+    const headBack=pmfResolve(frame,"head_back");
     const leftShoulder=pmfResolve(frame,"left_shoulder");
     const rightShoulder=pmfResolve(frame,"right_shoulder");
     const leftEar=pmfResolve(frame,"left_ear");
@@ -121,8 +123,27 @@ function pmfFrameMeasurements(frame) {
         push("trunk_axial_rotation_signed",pmfSignedSegmentAngleHorizontal(leftShoulder,rightShoulder),{section:"trunk",motion:"rotation"});
     }
 
+    // Cabeza sagital (beta): mismo criterio que la entrada manual.
+    // Se traza la línea desde la parte posterior de la cabeza hacia la frente
+    // y se compara con la horizontal, que representa la postura neutra = 0°.
+    // Con coordenadas de imagen, la flexión hacia delante produce un ángulo
+    // geométrico negativo; se invierte el signo para guardar flexión positiva
+    // y extensión negativa.
+    if(pmfFinitePoint(headBack)&&pmfFinitePoint(headFront)){
+        const betaRaw=pmfSignedSegmentAngleHorizontal(headBack,headFront);
+        if(betaRaw.valid){
+            push("head_flexion_signed",{value:-Number(betaRaw.value),valid:true},{
+                section:"head_neck",
+                motion:"head_flexion",
+                reference:"neutral_horizontal_0deg",
+                signConvention:"positive=forward_flexion; negative=extension",
+                landmarks:"head_back->head_front",
+                formula:"beta = -(angle of head_back->head_front relative to horizontal)"
+            });
+        }
+    }
+
     if(pmfFinitePoint(neck)&&pmfFinitePoint(head)){
-        push("head_flexion_signed",pmfSignedSegmentAngleVertical(neck,head),{section:"head_neck",motion:"head_flexion",reference:"neutral_0deg",signConvention:"deviation_from_neutral"});
         push("head_lateral_signed",pmfSignedSegmentAngleVertical(neck,head),{section:"head_neck",motion:"lateral"});
     }
 
