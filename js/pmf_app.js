@@ -1082,6 +1082,19 @@ function headStaticDurationCriterion(angle, observedSeconds) {
     };
 }
 
+function availableTrunkAlpha() {
+    const ordered=[...(pmfProject.kinoveaFiles||[])].sort((a,b)=>Number(a.videoIndex)-Number(b.videoIndex));
+    const values=[];
+    ordered.forEach(record=>{
+        const s=getSeriesFromRecord(record,"trunk_flexion_signed");
+        if(!s.length) return;
+        const extreme=seriesExtreme(s);
+        if(extreme && Number.isFinite(Number(extreme.value))) values.push(Number(extreme.value));
+    });
+    if(!values.length) return null;
+    return values.reduce((worst,v)=>Math.abs(v)>Math.abs(worst)?v:worst,values[0]);
+}
+
 function headStaticSupportValues() {
     const v=ensureSectionStudy("head_neck")?.variables?.flexion || {};
     return {
@@ -1206,7 +1219,9 @@ function buildManualSection(key) {
                 const raw=vars.flexion||{};
                 const supports=headStaticSupportValues();
                 const exactAngle=raw.staticAngleBand==="gt25to85" ? Number(raw.staticExactAngle) : v.angle;
-                const trunkAlpha=Number(raw.trunkAlpha);
+                const reusedTrunkAlpha=availableTrunkAlpha();
+                const manualTrunkAlpha=Number(raw.trunkAlpha);
+                const trunkAlpha=Number.isFinite(reusedTrunkAlpha)?reusedTrunkAlpha:manualTrunkAlpha;
                 const neckAngle=raw.staticAngleBand==="gt25to85" && supports.fullTrunkSupport===false &&
                     Number.isFinite(exactAngle) && Number.isFinite(trunkAlpha)
                     ? exactAngle-trunkAlpha
@@ -1226,7 +1241,11 @@ function buildManualSection(key) {
                     totalStaticSeconds:tv.seconds,
                     worstEpisode:{averageAngle:Number.isFinite(exactAngle)?exactAngle:v.angle,duration:tv.seconds}
                 };
-                if(Number.isFinite(neckAngle)) calculated.neckFlexionAngle=neckAngle;
+                if(Number.isFinite(neckAngle)){
+                    calculated.neckFlexionAngle=neckAngle;
+                    calculated.trunkAlpha=trunkAlpha;
+                    calculated.trunkAlphaSource=Number.isFinite(reusedTrunkAlpha)?"kinovea_reused":"manual";
+                }
                 if(durationCheck){
                     calculated.maxAcceptableStaticSeconds=durationCheck.limitSeconds;
                     calculated.durationCriterionResult=durationCheck.result;
@@ -1316,7 +1335,11 @@ function sectionStudyControls(key) {
                   : (key==="head_neck" && def.key==="flexion"
                       ? '<label>Inclinación de cabeza β<select data-pmf-head-static-band><option value="">-- seleccionar --</option><option value="lt0" '+(v.staticAngleBand==="lt0"?"selected":"")+'>‹ 0°</option><option value="from0to25" '+(v.staticAngleBand==="from0to25"?"selected":"")+'>0°–25° (incluidos)</option><option value="gt25to85" '+(v.staticAngleBand==="gt25to85"?"selected":"")+'>›25°–85° (85° incluido)</option><option value="gt85" '+(v.staticAngleBand==="gt85"?"selected":"")+'>› 85°</option></select></label>'+
                         (v.staticAngleBand==="gt25to85"?'<label>Ángulo exacto de cabeza β (0° = neutra)<input type="number" min="25.01" max="85" step="0.1" data-pmf-head-static-exact value="'+escapeHtml(v.staticExactAngle ?? "")+'"></label>':'')+
-                        (v.staticAngleBand==="gt25to85" && v.fullTrunkSupport===false?'<label>Ángulo de tronco α (0° = neutra)<input type="number" step="0.1" data-pmf-head-trunk-alpha value="'+escapeHtml(v.trunkAlpha ?? "")+'"></label>':'')
+                        (v.staticAngleBand==="gt25to85" && v.fullTrunkSupport===false
+                          ? (Number.isFinite(availableTrunkAlpha())
+                              ? '<div class="notice">Ángulo de tronco α reutilizado automáticamente de los datos Kinovea del estudio: '+escapeHtml(Number(availableTrunkAlpha()).toFixed(1))+'°</div>'
+                              : '<label>Ángulo de tronco α (0° = neutra)<input type="number" step="0.1" data-pmf-head-trunk-alpha value="'+escapeHtml(v.trunkAlpha ?? "")+'"></label>')
+                          : '')
                       : '<label>'+angleLabel+'<input type="number" step="0.1" data-pmf-manual-angle="'+def.key+'" value="'+escapeHtml(v.angle ?? "")+'"></label>')));
         const supportCell = key==="trunk" && def.key==="flexion"
           ? '<td><div class="pmf-cell-stack"><label>Soporte completo<select data-pmf-trunk-flexion-support><option value="">-- seleccionar --</option><option value="true" '+(v.fullSupport===true?"selected":"")+'>Con soporte</option><option value="false" '+(v.fullSupport===false?"selected":"")+'>Sin soporte</option></select></label></div></td>'
