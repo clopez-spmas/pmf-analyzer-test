@@ -1076,6 +1076,28 @@ function buildManualSection(key) {
     return {label:key,results,traceability:results.map(r=>r.traceability)};
 }
 
+function pmfPostureHelp(sectionKey, defKey) {
+    const helps = {
+        trunk: {
+            flexion: '<details class="help-panel"><summary>ⓘ Ayuda: ejemplos de flexión / extensión de espalda</summary><div class="help-content"><p><strong>Flexión:</strong> inclinar el tronco hacia delante. <strong>Vida cotidiana:</strong> agacharse para recoger una bolsa del suelo, inclinarse sobre un lavabo o hacer una cama. <strong>Trabajo:</strong> coger material de una caja baja, trabajar inclinado sobre una mesa o atender a una persona encamada.</p><p><strong>Extensión:</strong> llevar el tronco hacia atrás respecto a la postura erguida. <strong>Vida cotidiana:</strong> mirar hacia una balda alta arqueando el cuerpo hacia atrás. <strong>Trabajo:</strong> alcanzar material situado por encima y detrás, revisar una instalación elevada o trabajar mirando hacia arriba con el tronco retrasado.</p></div></details>',
+            lateral: '<details class="help-panel"><summary>ⓘ Ayuda: ejemplos de inclinación lateral de espalda</summary><div class="help-content"><p><strong>Inclinación lateral:</strong> desplazar el tronco hacia un lado sin girarlo. <strong>Vida cotidiana:</strong> inclinarse lateralmente para coger un objeto junto a una silla o sacar algo de un bolso situado a un lado. <strong>Trabajo:</strong> alcanzar piezas colocadas lateralmente, limpiar una superficie desde un costado o inclinarse hacia un paciente, usuario o máquina situada a un lado.</p></div></details>',
+            rotation: '<details class="help-panel"><summary>ⓘ Ayuda: ejemplos de rotación de espalda</summary><div class="help-content"><p><strong>Rotación axial:</strong> girar el tronco alrededor de su eje manteniendo la pelvis relativamente orientada al frente. <strong>Vida cotidiana:</strong> girarse desde el asiento para coger algo del asiento trasero o mirar detrás. <strong>Trabajo:</strong> trasladar piezas entre dos superficies situadas a ambos lados, girarse repetidamente hacia una cinta transportadora o atender controles situados detrás o lateralmente.</p></div></details>'
+        },
+        head_neck: {
+            flexion: '<details class="help-panel"><summary>ⓘ Ayuda: ejemplos de flexión / extensión de cabeza y cuello</summary><div class="help-content"><p><strong>Flexión:</strong> bajar la cabeza o dirigir la mirada hacia abajo. <strong>Vida cotidiana:</strong> mirar el móvil, leer un libro apoyado en una mesa o atarse los zapatos. <strong>Trabajo:</strong> revisar piezas pequeñas, escribir sobre una mesa baja, manipular productos o documentación situada por debajo de la línea de visión.</p><p><strong>Extensión:</strong> llevar la cabeza hacia atrás o mirar hacia arriba. <strong>Vida cotidiana:</strong> mirar una balda alta o el techo. <strong>Trabajo:</strong> inspeccionar instalaciones elevadas, trabajar bajo un vehículo elevado o manipular elementos situados por encima de la cabeza.</p></div></details>',
+            lateral: '<details class="help-panel"><summary>ⓘ Ayuda: ejemplos de inclinación lateral de cabeza</summary><div class="help-content"><p><strong>Inclinación lateral:</strong> acercar una oreja hacia el hombro sin girar la cabeza. <strong>Vida cotidiana:</strong> sujetar el teléfono entre hombro y oreja. <strong>Trabajo:</strong> mantener la cabeza ladeada para observar una pantalla, una pieza o una zona de trabajo situada lateralmente.</p></div></details>',
+            rotation: '<details class="help-panel"><summary>ⓘ Ayuda: ejemplos de rotación de cabeza y cuello</summary><div class="help-content"><p><strong>Rotación:</strong> girar la cabeza hacia la derecha o izquierda. <strong>Vida cotidiana:</strong> mirar hacia atrás al aparcar o cruzar una calle. <strong>Trabajo:</strong> vigilar una pantalla lateral, controlar el paso de vehículos, atender a una persona situada a un lado o alternar la mirada entre dos puestos de trabajo.</p></div></details>'
+        },
+        lower_right: {
+            knee: '<details class="help-panel"><summary>ⓘ Ayuda: ejemplos de postura de rodilla</summary><div class="help-content"><p><strong>Flexión de rodilla:</strong> doblar la rodilla respecto a la posición extendida. <strong>Vida cotidiana:</strong> ponerse en cuclillas, arrodillarse o sentarse en un asiento bajo. <strong>Trabajo:</strong> trabajar agachado, arrodillado o en cuclillas para acceder a zonas bajas, realizar mantenimiento, limpiar o manipular materiales próximos al suelo.</p></div></details>',
+            ankle: '<details class="help-panel"><summary>ⓘ Ayuda: ejemplos de postura de tobillo</summary><div class="help-content"><p><strong>Dorsiflexión:</strong> acercar la parte superior del pie hacia la pierna. <strong>Vida cotidiana:</strong> bajar una cuesta o hacer una sentadilla profunda. <strong>Trabajo:</strong> trabajar en cuclillas, avanzar con el cuerpo hacia delante manteniendo el talón apoyado o adoptar posturas bajas.</p><p><strong>Flexión plantar:</strong> llevar la punta del pie hacia abajo. <strong>Vida cotidiana:</strong> ponerse de puntillas. <strong>Trabajo:</strong> accionar pedales, alcanzar zonas elevadas apoyándose sobre las puntas de los pies o mantener el pie extendido durante determinadas tareas.</p></div></details>'
+        },
+        lower_left: {}
+    };
+    helps.lower_left = helps.lower_right;
+    return helps?.[sectionKey]?.[defKey] || "";
+}
+
 function sectionStudyControls(key) {
     const study=ensureSectionStudy(key);
     const defs=PMF_SECTION_MANUAL_DEFS[key] || [];
@@ -1096,7 +1118,7 @@ function sectionStudyControls(key) {
             '<td><label>Tiempo ('+unitLabel+')<input type="number" min="0" step="0.1" data-pmf-manual-time="'+def.key+'" value="'+escapeHtml(v.time ?? "")+'"></label></td>'+
             '<td><label>Frecuencia<select data-pmf-manual-frequency="'+def.key+'"><option value="lt2" '+((v.frequencyBand||"lt2")==="lt2"?"selected":"")+'>‹ 2 movimientos/minuto</option><option value="gte2" '+(v.frequencyBand==="gte2"?"selected":"")+'>≥ 2 movimientos/minuto</option></select></label></td>'
           : '<td colspan="3"><div class="notice">Se utilizarán los datos Kinovea disponibles para este movimiento/postura.</div></td>';
-        return '<tr><td><strong>'+escapeHtml(def.label)+'</strong></td>'+
+        return '<tr><td><strong>'+escapeHtml(def.label)+'</strong>'+pmfPostureHelp(key,def.key)+'</td>'+
           '<td><label>Fuente<select data-pmf-movement-source="'+def.key+'"><option value="kinovea" '+(source==="kinovea"?"selected":"")+'>Kinovea</option><option value="manual" '+(source==="manual"?"selected":"")+'>Manual</option></select></label></td>'+
           manualCells+'</tr>';
     }).join("");
