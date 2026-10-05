@@ -82,7 +82,7 @@ function renderProject() {
     renderVideoCount();
     renderVideoInputs();
     renderVideoJsonSummary();
-    renderAnalysisSummary();
+    renderAnalysisResults();
 }
 
 function renderIdentification() {
