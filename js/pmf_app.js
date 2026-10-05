@@ -1210,33 +1210,69 @@ function renderAnalysisResults() {
     renderVideoJsonSummary();
     const sections = pmfProject.analysis?.bodySections || {};
     const targetIds = {trunk:'results_trunk',head_neck:'results_head_neck',lower_right:'results_lower_right',lower_left:'results_lower_left'};
+    const movementOrder = {
+        trunk:["Flexión / extensión","Inclinación lateral","Rotación axial"],
+        head_neck:["Flexión / extensión de cabeza","Lateralización de cabeza","Rotación axial de cabeza"],
+        lower_right:["Rodilla","Tobillo"],
+        lower_left:["Rodilla","Tobillo"]
+    };
+
+    function resultMetrics(r) {
+        const f = Number(r?.calculated?.frequencyPerMinute);
+        const cp = Number(r?.calculated?.criticalPercent);
+        const staticSec = Number(r?.calculated?.totalStaticSeconds);
+        const angle = Number(r?.calculated?.extremeAngle);
+        return [
+            Number.isFinite(angle) ? 'Ángulo: ' + angle.toFixed(1) + '°' : null,
+            Number.isFinite(f) ? 'Frecuencia: ' + f.toFixed(2) + ' mov/min' : null,
+            Number.isFinite(cp) ? 'Tiempo crítico: ' + cp.toFixed(1) + '%' : null,
+            Number.isFinite(staticSec) ? 'Tiempo estático: ' + staticSec.toFixed(2) + ' s' : null,
+            Number.isFinite(Number(r?.calculated?.maxAcceptableStaticSeconds)) ? 'Máximo aceptable: ' + Number(r.calculated.maxAcceptableStaticSeconds).toFixed(1) + ' s' : null
+        ].filter(Boolean).join(' · ');
+    }
+
+    function resultCell(items, mode) {
+        const rows=(items||[]).filter(r=>r.mode===mode);
+        if(!rows.length) return '<span class="pmf-result-empty">—</span>';
+        return rows.map(r=>{
+            const metrics=resultMetrics(r);
+            const manual=manualControlForResult(r);
+            return '<div class="pmf-table-result">'+
+              '<strong class="pmf-result-status">'+escapeHtml(r.status)+'</strong>'+
+              (r.reason?'<div class="pmf-result-reason">'+escapeHtml(r.reason)+'</div>':'')+
+              (metrics?'<div class="pmf-result-metrics">'+escapeHtml(metrics)+'</div>':'')+
+              manual+
+            '</div>';
+        }).join('');
+    }
+
     Object.entries(targetIds).forEach(([key,id]) => {
         const container = document.getElementById(id);
         if (!container) return;
-        const study = ensureSectionStudy(key);
-        const section = sections[key];
         const controls = sectionStudyControls(key);
-        if (!section) {
-            container.innerHTML = controls + '<div class="pmf-summary"><p>Sin datos suficientes para evaluar este segmento corporal.</p></div>';
-            return;
-        }
-        const details = (section.results || []).map(r => {
-            const f = Number(r.calculated?.frequencyPerMinute);
-            const cp = Number(r.calculated?.criticalPercent);
-            const staticSec = Number(r.calculated?.totalStaticSeconds);
-            const angle = Number(r.calculated?.extremeAngle);
-            const metrics = [
-                Number.isFinite(angle) ? 'ángulo desfavorable ' + angle.toFixed(1) + '°' : null,
-                Number.isFinite(f) ? 'frecuencia ' + f.toFixed(2) + ' mov/min' : null,
-                Number.isFinite(cp) ? 'tiempo crítico ' + cp.toFixed(1) + '%' : null,
-                Number.isFinite(staticSec) ? 'estática acumulada ' + staticSec.toFixed(2) + ' s' : null,
-                Number.isFinite(Number(r.calculated?.maxAcceptableStaticSeconds)) ? 'máximo aceptable ' + Number(r.calculated.maxAcceptableStaticSeconds).toFixed(1) + ' s' : null
-            ].filter(Boolean).join(' · ');
-            const manual = manualControlForResult(r);
-            return '<div class="pmf-result-card"><div class="pmf-result-card-head"><span>' + (r.mode==="static" ? "Postura forzada estática" : "Postura forzada dinámica") + '</span><strong>' + escapeHtml(r.status) + '</strong></div><h3>' + escapeHtml(r.measurement) + '</h3><p>' + escapeHtml(r.reason) + '</p>' + (metrics ? '<div class="pmf-result-metrics">' + escapeHtml(metrics) + '</div>' : '') + manual + '</div>';
+        const section = sections[key];
+        const results = section?.results || [];
+        const labels = movementOrder[key] || [...new Set(results.map(r=>r.measurement))];
+
+        const tableRows = labels.map(label=>{
+            const matching = results.filter(r=>{
+                if(r.measurement===label) return true;
+                if(key==="trunk" && label==="Flexión / extensión" && /^Flexión/.test(r.measurement||"")) return true;
+                return false;
+            });
+            return '<tr>'+
+              '<td><strong>'+escapeHtml(label)+'</strong></td>'+
+              '<td>'+resultCell(matching,"static")+'</td>'+
+              '<td>'+resultCell(matching,"dynamic")+'</td>'+
+            '</tr>';
         }).join('');
-        const reason = section.reason ? '<div class="pmf-callout"><span>' + escapeHtml(section.reason) + '</span></div>' : '';
-        container.innerHTML = controls + '<div class="pmf-section-status"><span>Resultado del segmento</span><strong>' + escapeHtml(section.status || 'NO_EVALUADO') + '</strong></div>' + (details || reason || '<div class="pmf-summary"><p>No hay mediciones válidas para este segmento.</p></div>') + '<p class="pmf-note">El resultado del segmento combina las fuentes seleccionadas para cada movimiento/postura y toma la situación más desfavorable entre las mediciones válidas. No se calcula un resultado global de la tarea.</p>';
+
+        const table='<div class="result-table-wrap"><table class="compact-table pmf-results-matrix">'+
+          '<thead><tr><th>Movimiento</th><th>Postura forzada estática</th><th>Postura forzada dinámica</th></tr></thead>'+
+          '<tbody>'+tableRows+'</tbody></table></div>';
+
+        const reason = !results.length && section?.reason ? '<div class="pmf-callout"><span>' + escapeHtml(section.reason) + '</span></div>' : '';
+        container.innerHTML = controls + table + reason;
     });
     bindManualControls();
     bindSectionStudyControls();
