@@ -105,3 +105,24 @@ th{background:#f1f5f9;color:#005a9c}
   .pmf-results-matrix th,.pmf-results-matrix td{min-width:180px}
   .pmf-results-matrix th:first-child,.pmf-results-matrix td:first-child{min-width:150px}
 }
+
+/* Alineación uniforme de controles editables en tablas PMF */
+.pmf-study-controls .compact-table td{vertical-align:top}
+.pmf-study-controls .compact-table td>label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin:0;
+}
+.pmf-study-controls .compact-table input,
+.pmf-study-controls .compact-table select{
+  box-sizing:border-box;
+  width:100%;
+  min-height:38px;
+  margin:0;
+}
+.pmf-study-controls .compact-table td:nth-child(3),
+.pmf-study-controls .compact-table td:nth-child(4),
+.pmf-study-controls .compact-table td:nth-child(5){
+  padding-top:8px;
+}
