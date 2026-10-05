@@ -144,7 +144,7 @@ function pmfFrameMeasurements(frame) {
     }
 
     if(pmfFinitePoint(neck)&&pmfFinitePoint(head)){
-        push("head_lateral_signed",pmfSignedSegmentAngleVertical(neck,head),{section:"head_neck",motion:"lateral"});
+        push("head_lateral_signed",pmfSignedSegmentAngleVertical(neck,head),{section:"head_neck",motion:"lateral",reference:"neutral_0deg",signConvention:"positive=right; negative=left"});
     }
 
     if(pmfFinitePoint(leftEar)&&pmfFinitePoint(rightEar)){
