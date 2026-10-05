@@ -118,12 +118,16 @@ th{background:#f1f5f9;color:#005a9c}
   margin:0;
 }
 .pmf-cell-stack label{
-  display:flex;
-  flex-direction:column;
-  align-items:stretch;
+  display:grid;
+  grid-template-rows:minmax(34px,auto) 40px;
+  align-items:start;
   gap:6px;
   margin:0;
   line-height:1.25;
+}
+.pmf-cell-stack label > input,
+.pmf-cell-stack label > select{
+  align-self:end;
 }
 .pmf-study-controls .compact-table input,
 .pmf-study-controls .compact-table select{
@@ -141,11 +145,11 @@ th{background:#f1f5f9;color:#005a9c}
   display:flex;
   align-items:center;
   box-sizing:border-box;
-  margin:22px 0 0;
+  margin:40px 0 0;
   padding:0 12px;
   border-left:3px solid #1683d8;
 }
 .pmf-cell-static-text{
   min-height:62px;
-  padding-top:22px;
+  padding-top:40px;
 }
