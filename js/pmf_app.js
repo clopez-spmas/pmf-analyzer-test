@@ -918,7 +918,7 @@ function trunkFlexionBandAngle(band, exactAngle = null) {
         const a = Number(exactAngle);
         return Number.isFinite(a) && a > 20 && a <= 60 ? a : null;
     }
-    return ({lt0:-1,from0to20:20,gt60to90:90,gt90:91})[band] ?? null;
+    return ({lt0:0,from0to20:20,gt60to90:90,gt90:90})[band] ?? null;
 }
 
 function trunkStaticMaxAcceptableSeconds(angle) {
@@ -1088,7 +1088,7 @@ function sectionStudyControls(key) {
         const source=v.source==="manual"?"manual":"kinovea";
         const angleLabel=def.kind==="knee"?"Ángulo interno (°)":def.kind==="ankle"?"Ángulo tobillo (°; + dorsiflexión / − plantar)":"Ángulo (°)";
         const angleControl = key==="trunk" && def.key==="flexion"
-          ? '<label>Intervalo angular<select data-pmf-trunk-flexion-band><option value="">-- seleccionar --</option><option value="lt0" '+(v.angleBand==="lt0"?"selected":"")+'>‹ 0°</option><option value="from0to20" '+(v.angleBand==="from0to20"?"selected":"")+'>0°–20° (20° incluido)</option><option value="gt20to60" '+(v.angleBand==="gt20to60"?"selected":"")+'>›20°–60° (60° incluido)</option><option value="gt60to90" '+(v.angleBand==="gt60to90"?"selected":"")+'>›60°–90° (90° incluido)</option><option value="gt90" '+(v.angleBand==="gt90"?"selected":"")+'>› 90°</option></select></label>'+
+          ? '<label>Intervalo angular<select data-pmf-trunk-flexion-band><option value="">-- seleccionar --</option><option value="lt0" '+(v.angleBand==="lt0"?"selected":"")+'>≤ 0°</option><option value="from0to20" '+(v.angleBand==="from0to20"?"selected":"")+'>1°–20° (20° incluido)</option><option value="gt20to60" '+(v.angleBand==="gt20to60"?"selected":"")+'>›20°–60° (60° incluido)</option><option value="gt60to90" '+(v.angleBand==="gt60to90"?"selected":"")+'>›60°–90° (90° incluido)</option><option value="gt90" '+(v.angleBand==="gt90"?"selected":"")+'>› 90° (se evalúa como 90°)</option></select></label>'+
             (v.angleBand==="gt20to60"?'<label>Ángulo observado exacto (›20° y ≤60°)<input type="number" min="20.01" max="60" step="0.1" data-pmf-trunk-flexion-exact value="'+escapeHtml(v.exactAngle ?? "")+'"></label>':'')
           : '<label>'+angleLabel+'<input type="number" step="0.1" data-pmf-manual-angle="'+def.key+'" value="'+escapeHtml(v.angle ?? "")+'"></label>';
         const manualCells=source==="manual"
