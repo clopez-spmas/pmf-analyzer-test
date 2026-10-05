@@ -1179,22 +1179,22 @@ function sectionStudyControls(key) {
                   ? '<label>Intervalo angular<select data-pmf-trunk-rotation-band><option value="">-- seleccionar --</option><option value="ltNeg10" '+(v.angleBand==="ltNeg10"?"selected":"")+'>‹ -10°</option><option value="fromNeg10to10" '+(v.angleBand==="fromNeg10to10"?"selected":"")+'>-10° a 10° (incluidos)</option><option value="gt10" '+(v.angleBand==="gt10"?"selected":"")+'>› 10°</option></select></label>'
                   : '<label>'+angleLabel+'<input type="number" step="0.1" data-pmf-manual-angle="'+def.key+'" value="'+escapeHtml(v.angle ?? "")+'"></label>'));
         const supportCell = key==="trunk" && def.key==="flexion"
-          ? '<td><label>Soporte completo<select data-pmf-trunk-flexion-support><option value="">-- seleccionar --</option><option value="true" '+(v.fullSupport===true?"selected":"")+'>Con soporte</option><option value="false" '+(v.fullSupport===false?"selected":"")+'>Sin soporte</option></select></label></td>'
-          : '<td><span class="pmf-result-empty">—</span></td>';
+          ? '<td><div class="pmf-cell-stack"><label>Soporte completo<select data-pmf-trunk-flexion-support><option value="">-- seleccionar --</option><option value="true" '+(v.fullSupport===true?"selected":"")+'>Con soporte</option><option value="false" '+(v.fullSupport===false?"selected":"")+'>Sin soporte</option></select></label></div></td>'
+          : '<td><div class="pmf-cell-stack"><span class="pmf-result-empty">—</span></div></td>';
         const manualCells=source==="manual"
-          ? '<td>'+angleControl+'</td>'+
-            '<td><label>Tiempo ('+unitLabel+')<input type="number" min="0" step="0.1" data-pmf-manual-time="'+def.key+'" value="'+escapeHtml(v.time ?? "")+'"></label></td>'+
-            '<td><label>Frecuencia<select data-pmf-manual-frequency="'+def.key+'"><option value="lt2" '+((v.frequencyBand||"lt2")==="lt2"?"selected":"")+'>‹ 2 movimientos/minuto</option><option value="gte2" '+(v.frequencyBand==="gte2"?"selected":"")+'>≥ 2 movimientos/minuto</option></select></label></td>'
-          : '<td colspan="3"><div class="notice">Se utilizarán los datos Kinovea disponibles para este movimiento/postura.</div></td>';
+          ? '<td><div class="pmf-cell-stack">'+angleControl+'</div></td>'+
+            '<td><div class="pmf-cell-stack"><label>Tiempo ('+unitLabel+')<input type="number" min="0" step="0.1" data-pmf-manual-time="'+def.key+'" value="'+escapeHtml(v.time ?? "")+'"></label></div></td>'+
+            '<td><div class="pmf-cell-stack"><label>Frecuencia<select data-pmf-manual-frequency="'+def.key+'"><option value="lt2" '+((v.frequencyBand||"lt2")==="lt2"?"selected":"")+'>‹ 2 movimientos/minuto</option><option value="gte2" '+(v.frequencyBand==="gte2"?"selected":"")+'>≥ 2 movimientos/minuto</option></select></label></div></td>'
+          : '<td colspan="3"><div class="pmf-kinovea-note">Se utilizarán los datos Kinovea disponibles para este movimiento/postura.</div></td>';
         return '<tr><td><strong>'+escapeHtml(def.label)+'</strong></td>'+
-          '<td><label>Fuente<select data-pmf-movement-source="'+def.key+'"><option value="kinovea" '+(source==="kinovea"?"selected":"")+'>Kinovea</option><option value="manual" '+(source==="manual"?"selected":"")+'>Manual</option></select></label></td>'+
+          '<td><div class="pmf-cell-stack"><label>Fuente<select data-pmf-movement-source="'+def.key+'"><option value="kinovea" '+(source==="kinovea"?"selected":"")+'>Kinovea</option><option value="manual" '+(source==="manual"?"selected":"")+'>Manual</option></select></label></div></td>'+
           manualCells+supportCell+'</tr>';
     }).join("");
 
     const convexRow = key==="trunk" && study.taskPosture!=="standing"
       ? '<tr><td><strong>Postura convexa lumbar</strong>'+(study.taskPosture==="combined"?'<div class="pmf-field-hint">Valorar únicamente durante los periodos en posición sentada.</div>':'')+'</td>'+
-        '<td>Manual</td>'+
-        '<td colspan="4"><label>Postura convexa lumbar<select data-pmf-lumbar-convex><option value="">-- seleccionar --</option><option value="false" '+(study.lumbarConvex===false?"selected":"")+'>No existe</option><option value="true" '+(study.lumbarConvex===true?"selected":"")+'>Existe</option></select></label></td></tr>'
+        '<td><div class="pmf-cell-stack pmf-cell-static-text">Manual</div></td>'+
+        '<td colspan="4"><div class="pmf-cell-stack"><label>Postura convexa lumbar<select data-pmf-lumbar-convex><option value="">-- seleccionar --</option><option value="false" '+(study.lumbarConvex===false?"selected":"")+'>No existe</option><option value="true" '+(study.lumbarConvex===true?"selected":"")+'>Existe</option></select></label></div></td></tr>'
       : '';
 
     const trunkTaskPosture = key==="trunk"
