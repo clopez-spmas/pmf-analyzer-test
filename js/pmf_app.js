@@ -945,6 +945,12 @@ function ensureSectionStudy(key) {
         timeMode: current.timeMode === "percent" ? "percent" : "seconds",
         durationSeconds: Math.max(0.01, Number(current.durationSeconds) || 60),
         posture: lower ? (current.posture === "seated" ? "seated" : "standing") : undefined,
+        taskPosture: key === "trunk"
+            ? (current.taskPosture === "seated" || current.taskPosture === "combined" ? current.taskPosture : "standing")
+            : undefined,
+        lumbarConvex: key === "trunk"
+            ? (current.lumbarConvex === true ? true : current.lumbarConvex === false ? false : null)
+            : undefined,
         variables
     };
     return pmfProject.analysis.sectionStudy[key];
@@ -1078,6 +1084,16 @@ function buildManualSection(key) {
                 }
             }
         });
+        if (study.taskPosture !== "standing" && study.lumbarConvex !== null) {
+            const st=PMFCriteria.static.trunk({motion:"lumbar_convex",lumbarConvex:study.lumbarConvex});
+            results.push(pmfManualResult(
+                key,
+                "static",
+                "Postura convexa lumbar",
+                {lumbarConvex:study.lumbarConvex,taskPosture:study.taskPosture},
+                st
+            ));
+        }
     } else if (key === "head_neck") {
         PMF_SECTION_MANUAL_DEFS.head_neck.forEach(def => {
             const v=getVar(def.key);
@@ -1175,13 +1191,24 @@ function sectionStudyControls(key) {
           manualCells+supportCell+'</tr>';
     }).join("");
 
+    const convexRow = key==="trunk" && study.taskPosture!=="standing"
+      ? '<tr><td><strong>Postura convexa lumbar</strong>'+(study.taskPosture==="combined"?'<div class="pmf-field-hint">Valorar únicamente durante los periodos en posición sentada.</div>':'')+'</td>'+
+        '<td>Manual</td>'+
+        '<td colspan="4"><label>Postura convexa lumbar<select data-pmf-lumbar-convex><option value="">-- seleccionar --</option><option value="false" '+(study.lumbarConvex===false?"selected":"")+'>No existe</option><option value="true" '+(study.lumbarConvex===true?"selected":"")+'>Existe</option></select></label></td></tr>'
+      : '';
+
+    const trunkTaskPosture = key==="trunk"
+      ? '<div class="form-grid pmf-task-posture"><label>Posición durante la tarea<select data-pmf-task-posture><option value="standing" '+(study.taskPosture==="standing"?"selected":"")+'>De pie</option><option value="seated" '+(study.taskPosture==="seated"?"selected":"")+'>Sentado/a</option><option value="combined" '+(study.taskPosture==="combined"?"selected":"")+'>Combinada: de pie y sentado/a</option></select></label></div>'
+      : '';
+
     return '<div class="pmf-study-controls" data-pmf-study-section="'+key+'">'+
+      trunkTaskPosture+
       (hasManual?'<div class="form-grid">'+
         '<label>Unidad de tiempo<select data-pmf-time-mode><option value="seconds" '+(study.timeMode==="seconds"?"selected":"")+'>Segundos</option><option value="percent" '+(study.timeMode==="percent"?"selected":"")+'>% del tiempo analizado en el que se mantiene esta postura</option></select></label>'+
         '<label>Duración analizada (s)<input type="number" min="0.01" step="0.1" data-pmf-duration value="'+escapeHtml(study.durationSeconds)+'"></label>'+
         (lower && movementSource(key,"knee")==="manual"?'<label>Postura de referencia<select data-pmf-posture><option value="standing" '+(study.posture==="standing"?"selected":"")+'>De pie</option><option value="seated" '+(study.posture==="seated"?"selected":"")+'>Sentado/a</option></select></label>':'')+
       '</div>':'')+
-      '<div class="result-table-wrap"><table class="compact-table"><thead><tr><th>Movimiento / postura</th><th>Fuente</th><th>Ángulo</th><th>Tiempo</th><th>Frecuencia</th><th>Soporte</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+      '<div class="result-table-wrap"><table class="compact-table"><thead><tr><th>Movimiento / postura</th><th>Fuente</th><th>Ángulo</th><th>Tiempo</th><th>Frecuencia</th><th>Soporte</th></tr></thead><tbody>'+rows+convexRow+'</tbody></table></div>'+
       pmfSectionHelp(key)+
       (hasManual?'<div class="notice">Cada movimiento/postura puede estudiarse de forma independiente. Los datos manuales se combinan con los resultados Kinovea del resto del segmento. Una postura se considera estática cuando se mantiene durante más de 4 segundos.</div>':'<div class="notice">Todos los movimientos/posturas de este segmento se obtendrán de Kinovea mientras mantengan esta fuente seleccionada.</div>')+
     '</div>';
@@ -1206,6 +1233,15 @@ function bindSectionStudyControls() {
         block.querySelector("[data-pmf-time-mode]")?.addEventListener("change",e=>{study.timeMode=e.target.value==="percent"?"percent":"seconds";rerender();});
         block.querySelector("[data-pmf-duration]")?.addEventListener("change",e=>{study.durationSeconds=Math.max(.01,Number(e.target.value)||60);rerender();});
         block.querySelector("[data-pmf-posture]")?.addEventListener("change",e=>{study.posture=e.target.value==="seated"?"seated":"standing";rerender();});
+        block.querySelector("[data-pmf-task-posture]")?.addEventListener("change",e=>{
+            study.taskPosture=e.target.value==="seated"?"seated":e.target.value==="combined"?"combined":"standing";
+            if(study.taskPosture==="standing") study.lumbarConvex=null;
+            rerender();
+        });
+        block.querySelector("[data-pmf-lumbar-convex]")?.addEventListener("change",e=>{
+            study.lumbarConvex=e.target.value==="true"?true:e.target.value==="false"?false:null;
+            rerender();
+        });
         block.querySelector("[data-pmf-trunk-flexion-band]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.angleBand=e.target.value||null;if(e.target.value!=="gt20to60")delete study.variables.flexion.exactAngle;delete study.variables.flexion.angle;rerender();});
         block.querySelector("[data-pmf-trunk-flexion-exact]")?.addEventListener("change",e=>{const a=Number(e.target.value);study.variables.flexion=study.variables.flexion||{};study.variables.flexion.exactAngle=Number.isFinite(a)&&a>20&&a<=60?a:null;rerender();});
         block.querySelector("[data-pmf-trunk-lateral-band]")?.addEventListener("change",e=>{study.variables.lateral=study.variables.lateral||{};study.variables.lateral.angleBand=e.target.value||null;delete study.variables.lateral.angle;rerender();});
@@ -1222,7 +1258,7 @@ function renderAnalysisResults() {
     const sections = pmfProject.analysis?.bodySections || {};
     const targetIds = {trunk:'results_trunk',head_neck:'results_head_neck',lower_right:'results_lower_right',lower_left:'results_lower_left'};
     const movementOrder = {
-        trunk:["Flexión / extensión","Inclinación lateral","Rotación axial"],
+        trunk:["Flexión / extensión","Inclinación lateral","Rotación axial","Postura convexa lumbar"],
         head_neck:["Flexión / extensión de cabeza","Lateralización de cabeza","Rotación axial de cabeza"],
         lower_right:["Rodilla","Tobillo"],
         lower_left:["Rodilla","Tobillo"]
@@ -1263,7 +1299,9 @@ function renderAnalysisResults() {
         const controls = sectionStudyControls(key);
         const section = sections[key];
         const results = section?.results || [];
-        const labels = movementOrder[key] || [...new Set(results.map(r=>r.measurement))];
+        const labels = (movementOrder[key] || [...new Set(results.map(r=>r.measurement))]).filter(label =>
+            !(key==="trunk" && label==="Postura convexa lumbar" && ensureSectionStudy("trunk").taskPosture==="standing")
+        );
 
         const tableRows = labels.map(label=>{
             const matching = results.filter(r=>{
