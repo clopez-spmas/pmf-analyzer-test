@@ -86,7 +86,6 @@ async function pmfBuildKinoveaRecord(file, rawJson, parsedData, videoIndex) {
         },
         processing: {
             kinoveaConfig: {
-                view: "unspecified",
                 task: "",
                 range: {
                     mode: "all",
