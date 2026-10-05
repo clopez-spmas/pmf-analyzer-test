@@ -588,12 +588,18 @@ function classifyRecord(record) {
             if(staticData.episodes.length){
                 const angle=staticData.worstEpisode?.averageAngle ?? null;
                 const key=`v${record.videoNumber}.static.trunk.fullSupport`;
+                const support=manualValue(key);
+                const durationCheck=support===false ? trunkStaticDurationCriterion(angle,staticData.totalStaticSeconds) : null;
                 const criterion=PMFCriteria.static.trunk({
                     motion:"flexion",
                     angle,
-                    fullTrunkSupport:manualValue(key),
-                    durationCriterionResult:pmfProject.analysis?.manualConfirmations?.[`v${record.videoNumber}.static.trunk.durationCriterion`]?.value ?? null
+                    fullTrunkSupport:support,
+                    durationCriterionResult:durationCheck?.result ?? null
                 });
+                if(durationCheck){
+                    staticData.maxAcceptableStaticSeconds=durationCheck.limitSeconds;
+                    staticData.durationCriterionResult=durationCheck.result;
+                }
                 out.push(classifyMeasurement({record,section:"trunk",mode:"static",measurement:"Flexión / extensión",calculated:staticData,criterionResult:criterion,manualKey:key}));
             }
         }
@@ -907,8 +913,29 @@ function movementKeyForResult(section, measurement) {
     return def?.key || null;
 }
 
-function trunkFlexionBandAngle(band) {
-    return ({lt0:-1,from0to20:20,gt20to60:60,gt60to90:90,gt90:91})[band] ?? null;
+function trunkFlexionBandAngle(band, exactAngle = null) {
+    if (band === "gt20to60") {
+        const a = Number(exactAngle);
+        return Number.isFinite(a) && a > 20 && a <= 60 ? a : null;
+    }
+    return ({lt0:-1,from0to20:20,gt60to90:90,gt90:91})[band] ?? null;
+}
+
+function trunkStaticMaxAcceptableSeconds(angle) {
+    const a = Number(angle);
+    if (!Number.isFinite(a) || a <= 20 || a > 60) return null;
+    return Math.max(0, (5.5 - 0.075 * a) * 60);
+}
+
+function trunkStaticDurationCriterion(angle, observedSeconds) {
+    const limitSeconds = trunkStaticMaxAcceptableSeconds(angle);
+    const actual = Number(observedSeconds);
+    if (!Number.isFinite(limitSeconds) || !Number.isFinite(actual)) return null;
+    return {
+        result: actual <= limitSeconds ? PMFCriteria.RESULT.ACCEPTABLE : PMFCriteria.RESULT.NOT_ACCEPTABLE,
+        limitSeconds,
+        actualSeconds: actual
+    };
 }
 
 function manualTimeValues(study, value) {
@@ -948,7 +975,7 @@ function buildManualSection(key) {
     const getVar = name => ({
         source: vars[name]?.source === "manual" ? "manual" : "kinovea",
         angle: name === "flexion" && key === "trunk"
-            ? trunkFlexionBandAngle(vars[name]?.angleBand)
+            ? trunkFlexionBandAngle(vars[name]?.angleBand, vars[name]?.exactAngle)
             : (vars[name]?.angle === null || vars[name]?.angle === undefined || vars[name]?.angle === "" ? null : Number(vars[name].angle)),
         time: Number(vars[name]?.time),
         frequencyBand: vars[name]?.frequencyBand === "gte2" ? "gte2" : "lt2",
@@ -966,8 +993,23 @@ function buildManualSection(key) {
                 results.push(pmfManualResult(key,"dynamic",def.label,{extremeAngle:v.angle,frequencyPerMinute:Number.isFinite(v.frequency)?v.frequency:0,criticalPercent:tv.percent,criticalSeconds:tv.seconds,totalSeconds:tv.duration},dyn,mk));
                 if(tv.seconds>PMFCriteria.LIMITS.staticMinSeconds){
                     const sk="manual.trunk.static.fullSupport";
-                    const st=PMFCriteria.static.trunk({motion:"flexion",angle:v.angle,fullTrunkSupport:manualValue(sk),durationCriterionResult:pmfProject.analysis?.manualConfirmations?.["manual.trunk.static.durationCriterion"]?.value ?? null});
-                    results.push(pmfManualResult(key,"static",def.label,{totalStaticSeconds:tv.seconds,worstEpisode:{averageAngle:v.angle,duration:tv.seconds}},st,sk));
+                    const support=manualValue(sk);
+                    const durationCheck=support===false ? trunkStaticDurationCriterion(v.angle,tv.seconds) : null;
+                    const st=PMFCriteria.static.trunk({
+                        motion:"flexion",
+                        angle:v.angle,
+                        fullTrunkSupport:support,
+                        durationCriterionResult:durationCheck?.result ?? null
+                    });
+                    const calculated={
+                        totalStaticSeconds:tv.seconds,
+                        worstEpisode:{averageAngle:v.angle,duration:tv.seconds}
+                    };
+                    if(durationCheck){
+                        calculated.maxAcceptableStaticSeconds=durationCheck.limitSeconds;
+                        calculated.durationCriterionResult=durationCheck.result;
+                    }
+                    results.push(pmfManualResult(key,"static",def.label,calculated,st,sk));
                 }
             } else {
                 const fn=def.kind==="trunkLateral"?PMFCriteria.dynamic.trunkLateral:PMFCriteria.dynamic.trunkRotation;
@@ -1046,7 +1088,8 @@ function sectionStudyControls(key) {
         const source=v.source==="manual"?"manual":"kinovea";
         const angleLabel=def.kind==="knee"?"Ángulo interno (°)":def.kind==="ankle"?"Ángulo tobillo (°; + dorsiflexión / − plantar)":"Ángulo (°)";
         const angleControl = key==="trunk" && def.key==="flexion"
-          ? '<label>Intervalo angular<select data-pmf-trunk-flexion-band><option value="">-- seleccionar --</option><option value="lt0" '+(v.angleBand==="lt0"?"selected":"")+'>‹ 0°</option><option value="from0to20" '+(v.angleBand==="from0to20"?"selected":"")+'>0°–20° (20° incluido)</option><option value="gt20to60" '+(v.angleBand==="gt20to60"?"selected":"")+'>›20°–60° (60° incluido)</option><option value="gt60to90" '+(v.angleBand==="gt60to90"?"selected":"")+'>›60°–90° (90° incluido)</option><option value="gt90" '+(v.angleBand==="gt90"?"selected":"")+'>› 90°</option></select></label>'
+          ? '<label>Intervalo angular<select data-pmf-trunk-flexion-band><option value="">-- seleccionar --</option><option value="lt0" '+(v.angleBand==="lt0"?"selected":"")+'>‹ 0°</option><option value="from0to20" '+(v.angleBand==="from0to20"?"selected":"")+'>0°–20° (20° incluido)</option><option value="gt20to60" '+(v.angleBand==="gt20to60"?"selected":"")+'>›20°–60° (60° incluido)</option><option value="gt60to90" '+(v.angleBand==="gt60to90"?"selected":"")+'>›60°–90° (90° incluido)</option><option value="gt90" '+(v.angleBand==="gt90"?"selected":"")+'>› 90°</option></select></label>'+
+            (v.angleBand==="gt20to60"?'<label>Ángulo observado exacto (›20° y ≤60°)<input type="number" min="20.01" max="60" step="0.1" data-pmf-trunk-flexion-exact value="'+escapeHtml(v.exactAngle ?? "")+'"></label>':'')
           : '<label>'+angleLabel+'<input type="number" step="0.1" data-pmf-manual-angle="'+def.key+'" value="'+escapeHtml(v.angle ?? "")+'"></label>';
         const manualCells=source==="manual"
           ? '<td>'+angleControl+'</td>'+
@@ -1088,7 +1131,8 @@ function bindSectionStudyControls() {
         block.querySelector("[data-pmf-time-mode]")?.addEventListener("change",e=>{study.timeMode=e.target.value==="percent"?"percent":"seconds";rerender();});
         block.querySelector("[data-pmf-duration]")?.addEventListener("change",e=>{study.durationSeconds=Math.max(.01,Number(e.target.value)||60);rerender();});
         block.querySelector("[data-pmf-posture]")?.addEventListener("change",e=>{study.posture=e.target.value==="seated"?"seated":"standing";rerender();});
-        block.querySelector("[data-pmf-trunk-flexion-band]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.angleBand=e.target.value||null;delete study.variables.flexion.angle;rerender();});
+        block.querySelector("[data-pmf-trunk-flexion-band]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.angleBand=e.target.value||null;if(e.target.value!=="gt20to60")delete study.variables.flexion.exactAngle;delete study.variables.flexion.angle;rerender();});
+        block.querySelector("[data-pmf-trunk-flexion-exact]")?.addEventListener("change",e=>{const a=Number(e.target.value);study.variables.flexion=study.variables.flexion||{};study.variables.flexion.exactAngle=Number.isFinite(a)&&a>20&&a<=60?a:null;rerender();});
         block.querySelectorAll("[data-pmf-manual-angle]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pmfManualAngle;study.variables[k]=study.variables[k]||{};study.variables[k].angle=el.value===""?null:Number(el.value);rerender();}));
         block.querySelectorAll("[data-pmf-manual-time]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pmfManualTime;study.variables[k]=study.variables[k]||{};study.variables[k].time=el.value===""?0:Number(el.value);rerender();}));
         block.querySelectorAll("[data-pmf-manual-frequency]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pmfManualFrequency;study.variables[k]=study.variables[k]||{};study.variables[k].frequencyBand=el.value==="gte2"?"gte2":"lt2";delete study.variables[k].frequency;rerender();}));
@@ -1118,7 +1162,8 @@ function renderAnalysisResults() {
                 Number.isFinite(angle) ? 'ángulo desfavorable ' + angle.toFixed(1) + '°' : null,
                 Number.isFinite(f) ? 'frecuencia ' + f.toFixed(2) + ' mov/min' : null,
                 Number.isFinite(cp) ? 'tiempo crítico ' + cp.toFixed(1) + '%' : null,
-                Number.isFinite(staticSec) ? 'estática acumulada ' + staticSec.toFixed(2) + ' s' : null
+                Number.isFinite(staticSec) ? 'estática acumulada ' + staticSec.toFixed(2) + ' s' : null,
+                Number.isFinite(Number(r.calculated?.maxAcceptableStaticSeconds)) ? 'máximo aceptable ' + Number(r.calculated.maxAcceptableStaticSeconds).toFixed(1) + ' s' : null
             ].filter(Boolean).join(' · ');
             const manual = manualControlForResult(r);
             return '<div class="pmf-result-card"><div class="pmf-result-card-head"><span>' + (r.videoNumber==="Manual" ? "MANUAL" : "Vídeo " + r.videoNumber) + ' · ' + escapeHtml(r.mode) + '</span><strong>' + escapeHtml(r.status) + '</strong></div><h3>' + escapeHtml(r.measurement) + '</h3><p>' + escapeHtml(r.reason) + '</p>' + (metrics ? '<div class="pmf-result-metrics">' + escapeHtml(metrics) + '</div>' : '') + manual + '</div>';
