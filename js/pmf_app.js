@@ -63,7 +63,7 @@ function bindProjectActions() {
             const json = await PMFStorage.readJsonFile(file);
             pmfProject = PMFStorage.normalizeProject(json);
             renderProject();
-            setStatus(`Proyecto abierto: ${file.name}. Los datos Kinovea guardados están disponibles sin volver a cargarlos.`, "ok");
+            setStatus(`Estudio abierto: ${file.name}. Los datos Kinovea guardados están disponibles sin volver a cargarlos.`, "ok");
         } catch (error) {
             setStatus(error.message, "error");
         } finally {
@@ -118,7 +118,7 @@ function renderVideoInputs() {
         block.className = "video-input-block pmf-video-card";
 
         const persistedText = record
-            ? `<div class="pmf-persisted"><strong>Guardado en el proyecto:</strong> ${escapeHtml(record.source?.fileName || "Kinovea sin nombre")} · ${formatFrames(record)} · SHA-256: ${escapeHtml(shortHash(record.source?.sha256))}</div>`
+            ? `<div class="pmf-persisted"><strong>Guardado en el estudio:</strong> ${escapeHtml(record.source?.fileName || "Kinovea sin nombre")} · ${formatFrames(record)} · SHA-256: ${escapeHtml(shortHash(record.source?.sha256))}</div>`
             : `<div class="pmf-empty">Todavía no hay datos Kinovea guardados para este vídeo.</div>`;
 
         block.innerHTML = `
@@ -162,7 +162,7 @@ async function importKinovea(event, videoIndex) {
         touchProject();
         renderVideoInputs();
         renderAnalysisSummary();
-        setStatus(`Vídeo ${videoIndex + 1}: Kinovea incorporado al proyecto. No será necesario volver a cargarlo al reabrir este JSON.`, "ok");
+        setStatus(`Vídeo ${videoIndex + 1}: Kinovea incorporado al estudio. No será necesario volver a cargarlo al reabrir este JSON.`, "ok");
     } catch (error) {
         setStatus(error.message, "error");
     } finally {
@@ -175,7 +175,7 @@ function removeKinovea(videoIndex) {
     touchProject();
     renderVideoInputs();
     renderAnalysisSummary();
-    setStatus(`Se han eliminado del proyecto los datos Kinovea del vídeo ${videoIndex + 1}.`);
+    setStatus(`Se han eliminado del estudio los datos Kinovea del vídeo ${videoIndex + 1}.`);
 }
 
 function formatBytes(bytes) {
@@ -277,8 +277,8 @@ function saveProject() {
         .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ_-]+/g, "_")
         .replace(/^_+|_+$/g, "");
 
-    PMFStorage.downloadProject(pmfProject, `PMF_${task || "Proyecto"}.json`);
-    setStatus("Proyecto guardado con los Kinovea y los datos procesados disponibles hasta este punto.", "ok");
+    PMFStorage.downloadProject(pmfProject, `PMF_${task || "Estudio"}.json`);
+    setStatus("Estudio guardado con los Kinovea y los datos procesados disponibles hasta este punto.", "ok");
 }
 
 function syncIdentificationFromUI() {
@@ -292,7 +292,7 @@ function syncIdentificationFromUI() {
 
 function touchProject(updateStatus = true) {
     pmfProject.updatedAt = new Date().toISOString();
-    if (updateStatus) setStatus("Proyecto modificado. Guarda el JSON para conservar los cambios.");
+    if (updateStatus) setStatus("Estudio modificado. Guarda el JSON para conservar los cambios.");
 }
 
 function setStatus(message, type = "") {
@@ -382,7 +382,7 @@ async function runPMFAnalysis() {
         pmfProject.analysis.bodySections = classifyPMFSections(ordered);
         touchProject(false);
         renderAnalysisResults();
-        setStatus("Análisis PMF completado: variables, frecuencia, tiempo crítico, estáticas y clasificación por sección guardadas en el proyecto.", "ok");
+        setStatus("Análisis PMF completado: variables, frecuencia, tiempo crítico, estáticas y clasificación por sección guardadas en el estudio.", "ok");
         if (typeof goToPMFPage === "function") goToPMFPage("summary");
     } catch (error) {
         console.error(error);
