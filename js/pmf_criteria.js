@@ -167,19 +167,41 @@ function evaluateTrunkStatic({ motion, angle, fullTrunkSupport = null, durationC
     return pmfResult(PMF_RESULT.NOT_EVALUATED,"Combinación estática de tronco no codificada.","STAT_TRUNK_UNKNOWN",{motion,angle:a});
 }
 
-function evaluateHeadStatic({ motion, angle, fullHeadSupport = null }) {
+function evaluateHeadStatic({ motion, angle, fullHeadSupport = null, fullTrunkSupport = null, neckFlexionAngle = null, durationCriterionResult = null }) {
     const a=Number(angle);
     if(!Number.isFinite(a)) return pmfResult(PMF_RESULT.NOT_EVALUATED,"Falta ángulo válido.","STAT_HEAD");
 
     if(motion==="lateral") return pmfResult(a<-10||a>10?PMF_RESULT.NOT_ACCEPTABLE:PMF_RESULT.ACCEPTABLE,a<-10||a>10?"Lateralización estática fuera de -10° a 10°.":"Lateralización estática entre -10° y 10°.","STAT_HEAD_LATERAL",{angle:a});
     if(motion==="rotation") return pmfResult(a<-45||a>45?PMF_RESULT.NOT_ACCEPTABLE:PMF_RESULT.ACCEPTABLE,a<-45||a>45?"Rotación axial estática fuera de -45° a 45°.":"Rotación axial estática entre -45° y 45°.","STAT_HEAD_ROTATION",{angle:a});
     if(motion==="neck_flexion") return pmfResult(a<0||a>25?PMF_RESULT.NOT_ACCEPTABLE:PMF_RESULT.ACCEPTABLE,a<0||a>25?"Flexo-extensión de cuello fuera de 0° a 25°.":"Flexo-extensión de cuello entre 0° y 25°.","STAT_NECK_FLEX",{angle:a});
+
+    if(motion==="head_flexion") {
+        if(a>85) return pmfResult(PMF_RESULT.NOT_ACCEPTABLE,"Inclinación estática de cabeza superior a 85°.","STAT_HEAD_FLEX_GT85",{angle:a});
+        if(a>=0 && a<=25) return pmfResult(PMF_RESULT.ACCEPTABLE,"Inclinación estática de cabeza entre 0° y 25°.","STAT_HEAD_FLEX_0_25",{angle:a});
+        if(a<0){
+            if(fullHeadSupport===null) return pmfResult(PMF_RESULT.NEEDS_CONFIRMATION,"Debe confirmarse el soporte completo de la cabeza.","STAT_HEAD_EXTENSION_SUPPORT",{angle:a});
+            return pmfResult(fullHeadSupport?PMF_RESULT.ACCEPTABLE:PMF_RESULT.NOT_ACCEPTABLE,fullHeadSupport?"Extensión de cabeza con soporte completo.":"Extensión de cabeza sin soporte completo.","STAT_HEAD_EXTENSION_SUPPORT",{angle:a,fullHeadSupport});
+        }
+        if(a>25 && a<=85){
+            if(fullTrunkSupport===null) return pmfResult(PMF_RESULT.NEEDS_CONFIRMATION,"Debe confirmarse si existe soporte completo del tronco.","STAT_HEAD_FLEX_25_85_SUPPORT",{angle:a});
+            if(fullTrunkSupport===true){
+                if(durationCriterionResult===PMF_RESULT.ACCEPTABLE || durationCriterionResult===PMF_RESULT.NOT_ACCEPTABLE){
+                    return pmfResult(durationCriterionResult,"Resultado según la duración máxima aceptable de la Figura 5.16 y la Tabla 5.12.","STAT_HEAD_FLEX_25_85_DURATION",{angle:a,fullTrunkSupport,durationCriterionResult});
+                }
+                return pmfResult(PMF_RESULT.NEEDS_CONFIRMATION,"Con soporte completo del tronco: falta aplicar la duración máxima aceptable de la Figura 5.16 y la Tabla 5.12.","STAT_HEAD_FLEX_25_85_DURATION",{angle:a,fullTrunkSupport});
+            }
+            const n=Number(neckFlexionAngle);
+            if(!Number.isFinite(n)) return pmfResult(PMF_RESULT.NEEDS_CONFIRMATION,"Sin soporte completo del tronco: debe determinarse la flexo-extensión de cuello (β−α).","STAT_NECK_FLEX_REQUIRED",{angle:a,fullTrunkSupport});
+            return pmfResult(n>=0&&n<=25?PMF_RESULT.ACCEPTABLE:PMF_RESULT.NOT_ACCEPTABLE,n>=0&&n<=25?"Flexo-extensión de cuello (β−α) entre 0° y 25°.":"Flexo-extensión de cuello (β−α) fuera de 0° a 25°.","STAT_NECK_FLEX",{angle:a,neckFlexionAngle:n,fullTrunkSupport});
+        }
+    }
+
     if(motion==="head_extension") {
         if(a>=0) return pmfResult(PMF_RESULT.NOT_EVALUATED,"Este criterio corresponde a extensión de cabeza (<0°).","STAT_HEAD_EXTENSION",{angle:a});
         if(fullHeadSupport===null) return pmfResult(PMF_RESULT.NEEDS_CONFIRMATION,"Debe confirmarse el soporte completo de la cabeza.","STAT_HEAD_EXTENSION_SUPPORT",{angle:a});
         return pmfResult(fullHeadSupport?PMF_RESULT.ACCEPTABLE:PMF_RESULT.NOT_ACCEPTABLE,fullHeadSupport?"Extensión de cabeza con soporte completo.":"Extensión de cabeza sin soporte completo.","STAT_HEAD_EXTENSION_SUPPORT",{angle:a,fullHeadSupport});
     }
-    return pmfResult(PMF_RESULT.NEEDS_CONFIRMATION,"El criterio seleccionado requiere datos adicionales o criterio de duración no codificado todavía.","STAT_HEAD_PENDING",{motion,angle:a});
+    return pmfResult(PMF_RESULT.NEEDS_CONFIRMATION,"El criterio seleccionado requiere datos adicionales.","STAT_HEAD_PENDING",{motion,angle:a});
 }
 
 
