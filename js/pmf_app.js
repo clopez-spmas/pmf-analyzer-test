@@ -883,8 +883,10 @@ function ensureSectionStudy(key) {
         const previous = variables[def.key] && typeof variables[def.key] === "object" ? variables[def.key] : {};
         variables[def.key] = {
             ...previous,
-            source: previous.source === "manual" ? "manual" : (previous.source === "kinovea" ? "kinovea" : legacySource)
+            source: previous.source === "manual" ? "manual" : (previous.source === "kinovea" ? "kinovea" : legacySource),
+            frequencyBand: previous.frequencyBand === "gte2" ? "gte2" : (Number(previous.frequency) >= 2 ? "gte2" : "lt2")
         };
+        delete variables[def.key].frequency;
     });
     pmfProject.analysis.sectionStudy[key] = {
         timeMode: current.timeMode === "percent" ? "percent" : "seconds",
@@ -943,7 +945,8 @@ function buildManualSection(key) {
         source: vars[name]?.source === "manual" ? "manual" : "kinovea",
         angle: vars[name]?.angle === null || vars[name]?.angle === undefined || vars[name]?.angle === "" ? null : Number(vars[name].angle),
         time: Number(vars[name]?.time),
-        frequency: Number(vars[name]?.frequency)
+        frequencyBand: vars[name]?.frequencyBand === "gte2" ? "gte2" : "lt2",
+        frequency: vars[name]?.frequencyBand === "gte2" ? 2 : 0
     });
 
     if (key === "trunk") {
@@ -1039,7 +1042,7 @@ function sectionStudyControls(key) {
         const manualCells=source==="manual"
           ? '<td><label>'+angleLabel+'<input type="number" step="0.1" data-pmf-manual-angle="'+def.key+'" value="'+escapeHtml(v.angle ?? "")+'"></label></td>'+
             '<td><label>Tiempo ('+unitLabel+')<input type="number" min="0" step="0.1" data-pmf-manual-time="'+def.key+'" value="'+escapeHtml(v.time ?? "")+'"></label></td>'+
-            '<td><label>Frecuencia (mov/min)<input type="number" min="0" step="0.01" data-pmf-manual-frequency="'+def.key+'" value="'+escapeHtml(v.frequency ?? "")+'"></label></td>'
+            '<td><label>Frecuencia<select data-pmf-manual-frequency="'+def.key+'"><option value="lt2" '+((v.frequencyBand||"lt2")==="lt2"?"selected":"")+'>‹ 2 movimientos/minuto</option><option value="gte2" '+(v.frequencyBand==="gte2"?"selected":"")+'>≥ 2 movimientos/minuto</option></select></label></td>'
           : '<td colspan="3"><div class="notice">Se utilizarán los datos Kinovea disponibles para este movimiento/postura.</div></td>';
         return '<tr><td><strong>'+escapeHtml(def.label)+'</strong></td>'+
           '<td><label>Fuente<select data-pmf-movement-source="'+def.key+'"><option value="kinovea" '+(source==="kinovea"?"selected":"")+'>Kinovea</option><option value="manual" '+(source==="manual"?"selected":"")+'>Manual</option></select></label></td>'+
@@ -1078,7 +1081,7 @@ function bindSectionStudyControls() {
         block.querySelector("[data-pmf-posture]")?.addEventListener("change",e=>{study.posture=e.target.value==="seated"?"seated":"standing";rerender();});
         block.querySelectorAll("[data-pmf-manual-angle]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pmfManualAngle;study.variables[k]=study.variables[k]||{};study.variables[k].angle=el.value===""?null:Number(el.value);rerender();}));
         block.querySelectorAll("[data-pmf-manual-time]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pmfManualTime;study.variables[k]=study.variables[k]||{};study.variables[k].time=el.value===""?0:Number(el.value);rerender();}));
-        block.querySelectorAll("[data-pmf-manual-frequency]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pmfManualFrequency;study.variables[k]=study.variables[k]||{};study.variables[k].frequency=el.value===""?0:Number(el.value);rerender();}));
+        block.querySelectorAll("[data-pmf-manual-frequency]").forEach(el=>el.addEventListener("change",()=>{const k=el.dataset.pmfManualFrequency;study.variables[k]=study.variables[k]||{};study.variables[k].frequencyBand=el.value==="gte2"?"gte2":"lt2";delete study.variables[k].frequency;rerender();}));
     });
 }
 
