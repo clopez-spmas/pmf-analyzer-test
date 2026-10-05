@@ -1175,7 +1175,7 @@ function sectionStudyControls(key) {
       '</div>':'')+
       '<div class="result-table-wrap"><table class="compact-table"><thead><tr><th>Movimiento / postura</th><th>Fuente</th><th>Ángulo</th><th>Tiempo</th><th>Frecuencia</th><th>Soporte</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
       pmfSectionHelp(key)+
-      (hasManual?'<div class="notice">Cada movimiento/postura puede estudiarse de forma independiente. Los datos manuales se combinan con los resultados Kinovea del resto del segmento. Una postura manual se considera estática cuando el tiempo introducido supera 4 segundos.</div>':'<div class="notice">Todos los movimientos/posturas de este segmento se obtendrán de Kinovea mientras mantengan esta fuente seleccionada.</div>')+
+      (hasManual?'<div class="notice">Cada movimiento/postura puede estudiarse de forma independiente. Los datos manuales se combinan con los resultados Kinovea del resto del segmento. Una postura se considera estática cuando se mantiene durante más de 4 segundos.</div>':'<div class="notice">Todos los movimientos/posturas de este segmento se obtendrán de Kinovea mientras mantengan esta fuente seleccionada.</div>')+
     '</div>';
 }
 
