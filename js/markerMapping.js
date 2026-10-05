@@ -481,7 +481,6 @@ function pmfEnsureKinoveaConfig(videoIndex) {
         range: { mode: "all", start: 0, end: duration, cycles: 1 }
     };
     const cfg = record.processing.kinoveaConfig;
-    if (Object.prototype.hasOwnProperty.call(cfg, "view")) delete cfg.view;
     cfg.task = String(cfg.task || "");
     cfg.range = Object.assign({mode:"all",start:0,end:duration,cycles:1}, cfg.range || {});
     cfg.range.start = Math.max(0, Number(cfg.range.start) || 0);
