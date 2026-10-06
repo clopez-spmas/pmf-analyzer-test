@@ -67,7 +67,7 @@ function bindProjectActions() {
             const json = await PMFStorage.readJsonFile(file);
             pmfProject = PMFStorage.normalizeProject(json);
             renderProject();
-            setStatus(`Estudio abierto: ${file.name}. Los datos Kinovea guardados están disponibles sin volver a cargarlos.`, "ok");
+
         } catch (error) {
             setStatus(error.message, "error");
         } finally {
