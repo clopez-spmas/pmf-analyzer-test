@@ -61,6 +61,11 @@ function bindProjectActions() {
         renderSimulation();
         if (typeof goToPMFPage === "function") goToPMFPage("simulation");
     });
+    document.getElementById("wordTablesBtn")?.addEventListener("click", () => {
+        renderSimulation();
+        renderWordTables();
+        if (typeof goToPMFPage === "function") goToPMFPage("word_tables");
+    });
 
     document.getElementById("loadProjectInput")?.addEventListener("change", async event => {
         const file = event.target.files?.[0];
@@ -97,6 +102,7 @@ function renderProject() {
 
     renderAnalysisResults();
     renderSimulation();
+    renderWordTables();
 }
 
 function renderIdentification() {
@@ -1809,6 +1815,160 @@ function renderAnalysisResults() {
     });
     bindManualControls();
     bindSectionStudyControls();
+}
+
+
+function wordStatusRank(status) {
+    const R=PMFCriteria.RESULT;
+    return ({[R.NOT_EVALUATED]:0,[R.ACCEPTABLE]:1,[R.NEEDS_CONFIRMATION]:2,[R.NOT_ACCEPTABLE]:3})[status] ?? 0;
+}
+
+function wordWorstStatus(items) {
+    const valid=(items||[]).filter(Boolean);
+    if(!valid.length) return null;
+    return valid.reduce((worst,r)=>!worst||wordStatusRank(r.status)>wordStatusRank(worst.status)?r:worst,null)?.status || null;
+}
+
+function wordStatusCellStyle(status) {
+    if(status===PMFCriteria.RESULT.ACCEPTABLE) return "background:#c6efce;color:#006100;";
+    if(status===PMFCriteria.RESULT.NOT_ACCEPTABLE) return "background:#ffc7ce;color:#9c0006;";
+    if(status===PMFCriteria.RESULT.NEEDS_CONFIRMATION) return "background:#ffeb9c;color:#9c6500;";
+    return "background:#f3f4f6;color:#475569;";
+}
+
+function wordResultMetrics(r) {
+    const parts=[];
+    const angle=Number(r?.calculated?.extremeAngle);
+    const f=Number(r?.calculated?.frequencyPerMinute);
+    const cp=Number(r?.calculated?.criticalPercent);
+    const staticSec=Number(r?.calculated?.totalStaticSeconds);
+    const maxSec=Number(r?.calculated?.maxAcceptableStaticSeconds);
+    if(Number.isFinite(angle)) parts.push("Ángulo: "+angle.toFixed(1)+"°");
+    if(Number.isFinite(f)) parts.push("Frecuencia: "+f.toFixed(2)+" mov/min");
+    if(Number.isFinite(cp)) parts.push("Tiempo crítico: "+cp.toFixed(1)+"%");
+    if(Number.isFinite(staticSec)) parts.push("Tiempo estático: "+staticSec.toFixed(2)+" s");
+    if(Number.isFinite(maxSec)) parts.push("Máximo aceptable: "+maxSec.toFixed(1)+" s");
+    return parts.join(" · ");
+}
+
+function wordResultCell(items, mode) {
+    const rows=(items||[]).filter(r=>r.mode===mode);
+    if(!rows.length) return '<td style="border:1px solid #9ca3af;padding:6px;background:#fff;">—</td>';
+    const status=wordWorstStatus(rows);
+    const content=rows.map(r=>{
+        const metrics=wordResultMetrics(r);
+        return '<div style="margin:0 0 6px 0;"><strong>'+escapeHtml(r.status)+'</strong>'+
+            (r.reason?'<div>'+escapeHtml(r.reason)+'</div>':'')+
+            (metrics?'<div style="font-size:9pt;">'+escapeHtml(metrics)+'</div>':'')+
+            '</div>';
+    }).join('');
+    return '<td style="border:1px solid #9ca3af;padding:6px;vertical-align:top;'+wordStatusCellStyle(status)+'">'+content+'</td>';
+}
+
+function wordSectionTable(sectionKey, title) {
+    const sections=pmfProject.analysis?.bodySections||{};
+    const results=sections[sectionKey]?.results||[];
+    const movementOrder={
+        trunk:["Flexión / extensión","Inclinación lateral","Rotación axial","Postura convexa lumbar"],
+        head_neck:["Flexión / extensión de cabeza","Lateralización de cabeza","Rotación axial de cabeza"],
+        lower_right:["Rodilla","Tobillo"],
+        lower_left:["Rodilla","Tobillo"]
+    };
+    const labels=(movementOrder[sectionKey]||[]).filter(label =>
+        !(sectionKey==="trunk" && label==="Postura convexa lumbar" && ensureSectionStudy("trunk").taskPosture==="standing")
+    );
+    const rows=labels.map(label=>{
+        const matching=results.filter(r=>{
+            if(r.measurement===label) return true;
+            if(sectionKey==="trunk" && label==="Flexión / extensión" && /^Flexión/.test(r.measurement||"")) return true;
+            return false;
+        });
+        return '<tr><td style="border:1px solid #9ca3af;padding:6px;font-weight:700;background:#fff;">'+escapeHtml(label)+'</td>'+
+            wordResultCell(matching,"static")+wordResultCell(matching,"dynamic")+'</tr>';
+    }).join('');
+    return '<section class="pmf-word-block"><div class="pmf-word-heading"><h3>'+escapeHtml(title)+'</h3>'+
+        '<button type="button" class="toolbar-btn pmf-copy-word-table">Copiar tabla</button></div>'+
+        '<div class="pmf-word-copy-target"><table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:10pt;">'+
+        '<thead><tr>'+
+        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Movimiento</th>'+
+        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Postura forzada estática</th>'+
+        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Postura forzada dinámica</th>'+
+        '</tr></thead><tbody>'+rows+'</tbody></table></div></section>';
+}
+
+function wordSimulationTable() {
+    const sections=pmfProject.analysis?.bodySections||{};
+    const store=ensureSimulationStore();
+    const entries=Object.entries(store.results||{});
+    const rows=entries.map(([key,item])=>{
+        const sectionLabel=sections[item.section]?.label||item.section;
+        const mode=item.mode==="static"?"Estática":"Dinámica";
+        const currentStyle=wordStatusCellStyle(item.currentStatus);
+        const simulatedStyle=wordStatusCellStyle(item.simulatedStatus);
+        return '<tr>'+
+            '<td style="border:1px solid #9ca3af;padding:6px;background:#fff;">'+escapeHtml(sectionLabel)+'</td>'+
+            '<td style="border:1px solid #9ca3af;padding:6px;background:#fff;">'+escapeHtml(item.measurement||"")+'</td>'+
+            '<td style="border:1px solid #9ca3af;padding:6px;background:#fff;">'+mode+'</td>'+
+            '<td style="border:1px solid #9ca3af;padding:6px;'+currentStyle+'"><strong>'+escapeHtml(item.currentStatus||"—")+'</strong></td>'+
+            '<td style="border:1px solid #9ca3af;padding:6px;'+simulatedStyle+'"><strong>'+escapeHtml(item.simulatedStatus||"—")+'</strong>'+
+                (item.reason?'<div>'+escapeHtml(item.reason)+'</div>':'')+'</td>'+
+        '</tr>';
+    }).join('');
+    const body=rows || '<tr><td colspan="5" style="border:1px solid #9ca3af;padding:6px;background:#fff;">Todavía no hay resultados de simulación.</td></tr>';
+    return '<section class="pmf-word-block"><div class="pmf-word-heading"><h3>Resultados de la simulación</h3>'+
+        '<button type="button" class="toolbar-btn pmf-copy-word-table">Copiar tabla</button></div>'+
+        '<div class="pmf-word-copy-target"><table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:10pt;">'+
+        '<thead><tr>'+
+        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Segmento corporal</th>'+
+        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Movimiento</th>'+
+        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Tipo</th>'+
+        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Resultado actual</th>'+
+        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Resultado simulado</th>'+
+        '</tr></thead><tbody>'+body+'</tbody></table></div></section>';
+}
+
+async function copyWordTable(target) {
+    if(!target) return;
+    const html=target.innerHTML;
+    const text=target.innerText;
+    try {
+        if(navigator.clipboard && window.ClipboardItem){
+            const item=new ClipboardItem({
+                "text/html":new Blob([html],{type:"text/html"}),
+                "text/plain":new Blob([text],{type:"text/plain"})
+            });
+            await navigator.clipboard.write([item]);
+            return;
+        }
+    } catch (_) {}
+    const range=document.createRange();
+    range.selectNodeContents(target);
+    const selection=window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    document.execCommand("copy");
+    selection.removeAllRanges();
+}
+
+function renderWordTables() {
+    const container=document.getElementById("wordTablesContent");
+    if(!container || !pmfProject) return;
+    container.innerHTML=
+        wordSectionTable("trunk","Tronco")+
+        wordSectionTable("head_neck","Cabeza / cuello")+
+        wordSectionTable("lower_right","Extremidad inferior derecha")+
+        wordSectionTable("lower_left","Extremidad inferior izquierda")+
+        wordSimulationTable();
+
+    container.querySelectorAll(".pmf-copy-word-table").forEach(button=>{
+        button.addEventListener("click",async()=>{
+            const target=button.closest(".pmf-word-block")?.querySelector(".pmf-word-copy-target");
+            await copyWordTable(target);
+            const original=button.textContent;
+            button.textContent="Copiado";
+            window.setTimeout(()=>button.textContent=original,1200);
+        });
+    });
 }
 
 function formatDeg(value) {
