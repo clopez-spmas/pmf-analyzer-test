@@ -1606,7 +1606,7 @@ function sectionStudyControls(key) {
               ? '<option value="kinovea" '+(source==="kinovea"?"selected":"")+'>Kinovea</option><option value="manual" '+(source==="manual"?"selected":"")+'>Manual</option>'
               : '<option value="manual" selected>Manual</option>')+
             '</select></label>'+
-            (!kinoveaAvailable?'<div class="pmf-field-hint">Esta postura no puede valorarse adecuadamente mediante Kinovea.</div>':'')+
+            ((!kinoveaAvailable && (pmfProject.kinoveaFiles||[]).length>0)?'<div class="pmf-field-hint">Esta postura debe valorarse mediante introducción manual de los datos.</div>':'')+
             '</div></td>'+
           manualCells+supportCell+'</tr>';
     }).join("");
