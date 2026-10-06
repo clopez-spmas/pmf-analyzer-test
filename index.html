@@ -32,7 +32,7 @@
   <button type="button" id="saveProjectButton" class="toolbar-btn">Guardar estudio</button>
   <button type="button" id="loadProjectButton" class="toolbar-btn">Cargar estudio</button>
   <button type="button" id="newStudyButton" class="toolbar-btn">Nuevo estudio</button>
-  <button type="button" id="simulationBtn" class="toolbar-btn" disabled title="Función pendiente de incorporar en PMF">Ir a simulación</button>
+  <button type="button" id="simulationBtn" class="toolbar-btn">Ir a simulación</button>
   <button type="button" id="wordTablesBtn" class="toolbar-btn" disabled title="Función pendiente de incorporar en PMF">Tablas para Word</button>
   <button type="button" id="instructionsBtn" class="toolbar-btn" disabled title="Instrucciones PMF pendientes de preparar">Instrucciones de uso</button>
   <input id="loadProjectInput" type="file" accept=".json,application/json" hidden>
@@ -92,6 +92,11 @@
 <section class="screen" data-screen="7" data-page-name="lower_left">
   <div class="screen-title"><span>8</span><div><h2>Extremidad inferior izquierda</h2><p>Valoración independiente de rodilla y tobillo izquierdos.</p></div></div>
   <div id="results_lower_left" class="calculation-box pmf-section-results"><div class="placeholder">Pendiente de análisis.</div></div>
+</section>
+
+<section class="screen" data-screen="8" data-page-name="simulation">
+  <div class="screen-title"><span>9</span><div><h2>Simulación de mejoras</h2><p>Modifique las condiciones de cada postura y compare el resultado actual con el simulado. El estudio original no se modifica.</p></div></div>
+  <div id="simulationContent" class="pmf-simulation"><div class="placeholder">Todavía no hay resultados evaluados para simular.</div></div>
 </section>
 
 </main>
