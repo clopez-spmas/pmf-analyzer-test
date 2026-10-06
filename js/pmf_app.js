@@ -284,7 +284,7 @@ function saveProject() {
         .replace(/^_+|_+$/g, "");
 
     PMFStorage.downloadProject(pmfProject, `PMF_${task || "Estudio"}.json`);
-    setStatus("Estudio guardado con los Kinovea y los datos procesados disponibles hasta este punto.", "ok");
+
 }
 
 function syncIdentificationFromUI() {
