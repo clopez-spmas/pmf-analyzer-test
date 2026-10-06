@@ -36,6 +36,7 @@
         document.getElementById("loadProjectButton")?.addEventListener("click",()=>document.getElementById("loadProjectInput")?.click());
         document.getElementById("newStudyButton")?.addEventListener("click",()=>{
             if(window.confirm("¿Desea iniciar un nuevo estudio? Se perderán los cambios que no haya guardado.")){
+                if(typeof window.discardUnsavedPMFChanges==="function") window.discardUnsavedPMFChanges();
                 window.location.reload();
             }
         });
