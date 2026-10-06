@@ -1252,7 +1252,7 @@ function buildManualSection(key) {
     const results = [];
     const vars = study.variables || {};
     const getVar = name => ({
-        source: vars[name]?.source === "manual" ? "manual" : "kinovea",
+        source: movementSource(key, name),
         angle: name === "flexion" && key === "trunk"
             ? trunkFlexionBandAngle(vars[name]?.angleBand, vars[name]?.exactAngle)
             : (name === "lateral" && key === "trunk"
