@@ -59,7 +59,7 @@ function pmfNormalizeProject(candidate) {
         throw new Error("El archivo no contiene un estudio válido.");
     }
     if (candidate.schema !== PMF_PROJECT_SCHEMA) {
-        throw new Error("El archivo no corresponde a un estudio de Posturas y Movimientos Forzados.");
+        throw new Error("El archivo no corresponde a un estudio de Posturas Forzadas.");
     }
 
     const base = pmfCreateEmptyProject();
