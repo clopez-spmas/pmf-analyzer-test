@@ -17,6 +17,7 @@ body{margin:0;padding:30px;font-family:"Segoe UI",Arial,Helvetica,sans-serif;bac
 .nav-primary:disabled,.nav-secondary:disabled,.toolbar-btn:disabled{opacity:.45;cursor:not-allowed}
 .study-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:14px}
 .status{min-height:24px;margin:6px 0 14px;color:#005a9c;font-size:14px}
+.status:empty{display:none}
 .screen{display:none;padding:24px}
 .screen.active{display:block}
 .screen-title{display:flex;gap:15px;align-items:flex-start;margin-bottom:22px}
