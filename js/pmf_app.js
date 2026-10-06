@@ -788,10 +788,8 @@ function classifyRecord(record) {
     ["left","right"].forEach(side=>{
         const section=side==="left"?"lower_left":"lower_right";
         const postureKey=`v${record.videoNumber}.${section}.posture`;
-        const sectionStudy=section==="lower_right" ? ensureSectionStudy("lower_right") : null;
-        const posture=section==="lower_right"
-            ? (sectionStudy?.posture==="seated" ? "seated" : "standing")
-            : (pmfProject.analysis?.manualConfirmations?.[postureKey]?.value ?? null);
+        const sectionStudy=ensureSectionStudy(section);
+        const posture=sectionStudy?.posture==="seated" ? "seated" : "standing";
 
         const kneeInternal=getSeriesFromRecord(record,`knee_flexion_${side}`);
         const kneeStanding=getSeriesFromRecord(record,`knee_flexion_${side}_standing_flexion`);
@@ -824,13 +822,9 @@ function classifyRecord(record) {
                     const supportKey=posture==="standing"
                         ? `v${record.videoNumber}.${section}.ischialSupport`
                         : `v${record.videoNumber}.${section}.trunkPosteriorInclined`;
-                    const rightKnee=section==="lower_right" ? (sectionStudy?.variables?.knee||{}) : {};
-                    const ischialSupport=section==="lower_right"
-                        ? (rightKnee.ischialSupport===true?true:rightKnee.ischialSupport===false?false:null)
-                        : (pmfProject.analysis?.manualConfirmations?.[supportKey]?.value ?? null);
-                    const trunkPosteriorInclined=section==="lower_right"
-                        ? (rightKnee.trunkPosteriorInclined===true?true:rightKnee.trunkPosteriorInclined===false?false:null)
-                        : (pmfProject.analysis?.manualConfirmations?.[supportKey]?.value ?? null);
+                    const kneeStudy=sectionStudy?.variables?.knee||{};
+                    const ischialSupport=kneeStudy.ischialSupport===true?true:kneeStudy.ischialSupport===false?false:null;
+                    const trunkPosteriorInclined=kneeStudy.trunkPosteriorInclined===true?true:kneeStudy.trunkPosteriorInclined===false?false:null;
                     const criterionStatic=PMFCriteria.static.knee({
                         posture,
                         internalAngle:posture==="seated"?st.worstEpisode?.averageAngle:internalExtreme?.value,
@@ -838,7 +832,7 @@ function classifyRecord(record) {
                         ischialSupport:posture==="standing"?ischialSupport:null,
                         trunkPosteriorInclined:posture==="seated"?trunkPosteriorInclined:null
                     });
-                    out.push(classifyMeasurement({record,section,mode:"static",measurement:"Rodilla",calculated:st,criterionResult:criterionStatic,manualKey:section==="lower_right"?null:supportKey}));
+                    out.push(classifyMeasurement({record,section,mode:"static",measurement:"Rodilla",calculated:st,criterionResult:criterionStatic,manualKey:null}));
                 }
             }
         }
@@ -1488,12 +1482,8 @@ function buildManualSection(key) {
             if(tv.seconds>PMFCriteria.LIMITS.staticMinSeconds){
                 const mk=posture==="standing"?"manual."+key+".ischialSupport":"manual."+key+".trunkPosteriorInclined";
                 const kneeRaw=vars.knee||{};
-                const ischialSupport=key==="lower_right"
-                    ? (kneeRaw.ischialSupport===true?true:kneeRaw.ischialSupport===false?false:null)
-                    : manualValue(mk);
-                const trunkPosteriorInclined=key==="lower_right"
-                    ? (kneeRaw.trunkPosteriorInclined===true?true:kneeRaw.trunkPosteriorInclined===false?false:null)
-                    : manualValue(mk);
+                const ischialSupport=kneeRaw.ischialSupport===true?true:kneeRaw.ischialSupport===false?false:null;
+                const trunkPosteriorInclined=kneeRaw.trunkPosteriorInclined===true?true:kneeRaw.trunkPosteriorInclined===false?false:null;
                 const st=PMFCriteria.static.knee({
                     posture,
                     internalAngle:knee.angle,
@@ -1501,7 +1491,7 @@ function buildManualSection(key) {
                     ischialSupport:posture==="standing"?ischialSupport:null,
                     trunkPosteriorInclined:posture==="seated"?trunkPosteriorInclined:null
                 });
-                results.push(pmfManualResult(key,"static","Rodilla",{totalStaticSeconds:tv.seconds,worstEpisode:{averageAngle:knee.angle,duration:tv.seconds}},st,key==="lower_right"?null:mk));
+                results.push(pmfManualResult(key,"static","Rodilla",{totalStaticSeconds:tv.seconds,worstEpisode:{averageAngle:knee.angle,duration:tv.seconds}},st,null));
             }
         }
         const ankle=getVar("ankle");
@@ -1524,7 +1514,7 @@ function pmfSectionHelp(sectionKey) {
         trunk: '<details class="help-panel"><summary>ⓘ Ayuda: ejemplos de posturas de espalda</summary><div class="help-content"><p><strong>Flexión / extensión (inclinarse hacia delante o hacia atrás):</strong> por ejemplo al recoger algo del suelo, hacer una cama, trabajar sobre una mesa baja, mirar una balda alta o alcanzar algo situado por encima y detrás.</p><p><strong>Inclinación lateral (inclinarse hacia un lado):</strong> por ejemplo al coger algo situado junto a una silla, alcanzar una pieza colocada a un lado o acercarse lateralmente a una persona o máquina.</p><p><strong>Rotación (girar el cuerpo):</strong> por ejemplo al mirar hacia atrás desde un asiento, mover objetos entre dos zonas situadas a ambos lados o girarse repetidamente hacia una cinta.</p><p><strong>Postura convexa lumbar (espalda baja redondeada al estar sentado/a):</strong> se produce cuando la zona lumbar pierde su curvatura habitual y queda redondeada hacia atrás durante la posición sentada. Por ejemplo, al sentarse encorvado/a sin apoyo lumbar o trabajar sentado/a inclinado hacia delante durante periodos prolongados. Solo se valora cuando la tarea incluye trabajo en posición sentada.</p></div></details>',
         head_neck: '<details class="help-panel"><summary>ⓘ Ayuda: medición y ejemplos de posturas de cabeza y cuello</summary><div class="help-content"><p><strong>Cómo medir manualmente el ángulo β de flexión/extensión de cabeza:</strong></p><p>1. Utilice una <strong>vista lateral</strong> en la que se vea con claridad la cabeza y el tronco.</p><p>2. Tome como referencia la <strong>postura neutra de cabeza = 0°</strong>: cabeza erguida, sin mirar hacia arriba ni hacia abajo.</p><p>3. En el vídeo, identifique el fotograma o periodo en el que se mantiene la postura de cabeza que quiere valorar. Para considerarla estática debe mantenerse durante <strong>más de 4 segundos</strong>.</p><p>4. Trace una línea entre la <strong>frente</strong> y la <strong>parte posterior de la cabeza, por encima de la nuca</strong>. Utilice siempre esas mismas zonas como referencia y compare la línea con la postura neutra.</p><p>5. Introduzca como β la <strong>desviación respecto a 0°</strong>, no el ángulo absoluto que pueda mostrar la herramienta de medición del vídeo. La inclinación hacia delante es positiva; la extensión hacia atrás es negativa.</p><div class="pmf-help-image-wrap"><img class="pmf-help-image" src="assets/angulo_beta_help.png" alt="Esquema para medir el ángulo beta de flexión y extensión de cabeza"></div><p><strong>Ejemplo:</strong> si desde la posición neutra la cabeza se inclina 35° hacia delante, β = 35°. Si se inclina 10° hacia atrás, β = −10°.</p><p><strong>Flexión / extensión de cabeza:</strong> por ejemplo al mirar el móvil, leer sobre una mesa, revisar piezas pequeñas, mirar una balda alta o inspeccionar una instalación elevada.</p><p><strong>Lateralización de cabeza:</strong> por ejemplo al sujetar un teléfono entre el hombro y la oreja o inclinar la cabeza lateralmente para observar una zona de trabajo.</p><p><strong>Rotación axial de cabeza:</strong> por ejemplo al mirar hacia atrás al aparcar, vigilar una pantalla lateral o mirar alternativamente dos zonas de trabajo.</p></div></details>',
         lower_right: '<details class="help-panel"><summary>ⓘ Ayuda: ejemplos de posturas de la extremidad inferior derecha</summary><div class="help-content"><p><strong>Rodilla de pie:</strong> por ejemplo al ponerse en cuclillas, trabajar en semisentadilla, agacharse manteniendo una rodilla flexionada, arrodillarse o trabajar cerca del suelo.</p><p><strong>Rodilla sentado/a:</strong> por ejemplo al trabajar en un asiento bajo, mantener la pierna muy recogida bajo la silla o, por el contrario, mantenerla muy extendida hacia delante.</p><p><strong>Apoyo isquiotibial:</strong> por ejemplo cuando la persona trabaja semisentada sobre un apoyo o asiento alto que soporta el peso a nivel de los isquiones.</p><p><strong>Tronco posteriormente inclinado:</strong> por ejemplo cuando la persona permanece sentada y recostada hacia atrás sobre el respaldo.</p><p><strong>Tobillo:</strong> por ejemplo al hacer una sentadilla profunda, trabajar agachado con el talón apoyado, ponerse de puntillas, accionar un pedal o alcanzar algo situado en altura. Para la entrada manual, la <strong>dorsiflexión se introduce con signo positivo (+)</strong> y la <strong>flexión plantar con signo negativo (−)</strong>.</p></div></details>',
-        lower_left: '<details class="help-panel"><summary>ⓘ Ayuda: ejemplos de posturas de la extremidad inferior izquierda</summary><div class="help-content"><p><strong>Rodilla (doblar la rodilla):</strong> por ejemplo al ponerse en cuclillas, arrodillarse, sentarse en un asiento bajo o trabajar agachado cerca del suelo.</p><p><strong>Tobillo (llevar la rodilla hacia delante con el talón apoyado o ponerse de puntillas):</strong> por ejemplo al hacer una sentadilla profunda, trabajar agachado con el pie apoyado, accionar algunos pedales o alcanzar algo situado alto.</p></div></details>'
+        lower_left: '<details class="help-panel"><summary>ⓘ Ayuda: ejemplos de posturas de la extremidad inferior izquierda</summary><div class="help-content"><p><strong>Rodilla de pie:</strong> por ejemplo al ponerse en cuclillas, trabajar en semisentadilla, agacharse manteniendo una rodilla flexionada, arrodillarse o trabajar cerca del suelo.</p><p><strong>Rodilla sentado/a:</strong> por ejemplo al trabajar en un asiento bajo, mantener la pierna muy recogida bajo la silla o, por el contrario, mantenerla muy extendida hacia delante.</p><p><strong>Apoyo isquiotibial:</strong> por ejemplo cuando la persona trabaja semisentada sobre un apoyo o asiento alto que soporta el peso a nivel de los isquiones.</p><p><strong>Tronco posteriormente inclinado:</strong> por ejemplo cuando la persona permanece sentada y recostada hacia atrás sobre el respaldo.</p><p><strong>Tobillo:</strong> por ejemplo al hacer una sentadilla profunda, trabajar agachado con el talón apoyado, ponerse de puntillas, accionar un pedal o alcanzar algo situado en altura.</p></div></details>'
     };
     return helps[sectionKey] || "";
 }
@@ -1571,11 +1561,11 @@ function sectionStudyControls(key) {
                 ((source==="kinovea"||v.staticAngleBand==="gt25to85")?'<label>Soporte completo del tronco<select data-pmf-head-trunk-support><option value="">-- seleccionar --</option><option value="true" '+(v.fullTrunkSupport===true?"selected":"")+'>Con soporte</option><option value="false" '+(v.fullTrunkSupport===false?"selected":"")+'>Sin soporte</option></select></label>':'')+
                 ((source==="manual"&&v.staticAngleBand!=="lt0"&&v.staticAngleBand!=="gt25to85")?'<span class="pmf-result-empty">—</span>':'')+
                 '</div></td>'
-              : (key==="lower_right" && def.key==="knee"
+              : (lower && def.key==="knee"
                   ? '<td><div class="pmf-cell-stack">'+
                     (study.posture==="standing"
-                      ? '<label>Apoyo isquiotibial<select data-pmf-right-knee-ischial-support><option value="">-- seleccionar --</option><option value="true" '+(v.ischialSupport===true?"selected":"")+'>Sí</option><option value="false" '+(v.ischialSupport===false?"selected":"")+'>No</option></select></label>'
-                      : '<label>Tronco posteriormente inclinado<select data-pmf-right-knee-trunk-posterior><option value="">-- seleccionar --</option><option value="true" '+(v.trunkPosteriorInclined===true?"selected":"")+'>Sí</option><option value="false" '+(v.trunkPosteriorInclined===false?"selected":"")+'>No</option></select></label>')+
+                      ? '<label>Apoyo isquiotibial<select data-pmf-knee-ischial-support><option value="">-- seleccionar --</option><option value="true" '+(v.ischialSupport===true?"selected":"")+'>Sí</option><option value="false" '+(v.ischialSupport===false?"selected":"")+'>No</option></select></label>'
+                      : '<label>Tronco posteriormente inclinado<select data-pmf-knee-trunk-posterior><option value="">-- seleccionar --</option><option value="true" '+(v.trunkPosteriorInclined===true?"selected":"")+'>Sí</option><option value="false" '+(v.trunkPosteriorInclined===false?"selected":"")+'>No</option></select></label>')+
                     '</div></td>'
                   : '<td><div class="pmf-cell-stack"><span class="pmf-result-empty">—</span></div></td>'));
         const manualCells=source==="manual"
@@ -1631,7 +1621,7 @@ function sectionStudyControls(key) {
       (hasManual?'<div class="form-grid">'+
         '<label>Unidad de tiempo<select data-pmf-time-mode><option value="seconds" '+(study.timeMode==="seconds"?"selected":"")+'>Segundos</option><option value="percent" '+(study.timeMode==="percent"?"selected":"")+'>% del tiempo analizado en el que se mantiene esta postura</option></select></label>'+
         '<label>Duración analizada (s)<input type="number" min="0.01" step="0.1" data-pmf-duration value="'+escapeHtml(study.durationSeconds)+'"></label>'+
-        ((key==="lower_right" || (lower && movementSource(key,"knee")==="manual"))?'<label>Postura de referencia<select data-pmf-posture><option value="standing" '+(study.posture==="standing"?"selected":"")+'>De pie</option><option value="seated" '+(study.posture==="seated"?"selected":"")+'>Sentado/a</option></select></label>':'')+
+        (lower?'<label>Postura de referencia<select data-pmf-posture><option value="standing" '+(study.posture==="standing"?"selected":"")+'>De pie</option><option value="seated" '+(study.posture==="seated"?"selected":"")+'>Sentado/a</option></select></label>':'')+
       '</div>':'')+
       '<div class="result-table-wrap"><table class="compact-table"><thead><tr><th>Movimiento / postura</th><th>Fuente</th><th>Ángulo</th><th>Tiempo</th><th>Frecuencia</th><th>Soporte</th></tr></thead><tbody>'+rows+convexRow+'</tbody></table></div>'+
       pmfSectionHelp(key)+
@@ -1658,8 +1648,8 @@ function bindSectionStudyControls() {
         block.querySelector("[data-pmf-time-mode]")?.addEventListener("change",e=>{study.timeMode=e.target.value==="percent"?"percent":"seconds";rerender();});
         block.querySelector("[data-pmf-duration]")?.addEventListener("change",e=>{study.durationSeconds=Math.max(.01,Number(e.target.value)||60);rerender();});
         block.querySelector("[data-pmf-posture]")?.addEventListener("change",e=>{study.posture=e.target.value==="seated"?"seated":"standing";rerender();});
-        block.querySelector("[data-pmf-right-knee-ischial-support]")?.addEventListener("change",e=>{study.variables.knee=study.variables.knee||{};study.variables.knee.ischialSupport=e.target.value==="true"?true:e.target.value==="false"?false:null;rerender();});
-        block.querySelector("[data-pmf-right-knee-trunk-posterior]")?.addEventListener("change",e=>{study.variables.knee=study.variables.knee||{};study.variables.knee.trunkPosteriorInclined=e.target.value==="true"?true:e.target.value==="false"?false:null;rerender();});
+        block.querySelector("[data-pmf-knee-ischial-support]")?.addEventListener("change",e=>{study.variables.knee=study.variables.knee||{};study.variables.knee.ischialSupport=e.target.value==="true"?true:e.target.value==="false"?false:null;rerender();});
+        block.querySelector("[data-pmf-knee-trunk-posterior]")?.addEventListener("change",e=>{study.variables.knee=study.variables.knee||{};study.variables.knee.trunkPosteriorInclined=e.target.value==="true"?true:e.target.value==="false"?false:null;rerender();});
         block.querySelector("[data-pmf-task-posture]")?.addEventListener("change",e=>{
             study.taskPosture=e.target.value==="seated"?"seated":e.target.value==="combined"?"combined":"standing";
             if(study.taskPosture==="standing") study.lumbarConvex=null;
