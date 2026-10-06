@@ -86,6 +86,11 @@ function renderProject() {
     renderVideoCount();
     renderVideoInputs();
     renderVideoJsonSummary();
+
+    const ordered = [...(pmfProject.kinoveaFiles || [])].sort((a,b)=>Number(a.videoIndex)-Number(b.videoIndex));
+    pmfProject.analysis = pmfProject.analysis || {};
+    pmfProject.analysis.bodySections = classifyPMFSections(ordered);
+
     renderAnalysisResults();
     renderSimulation();
 }
