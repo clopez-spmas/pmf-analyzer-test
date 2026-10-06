@@ -175,3 +175,28 @@ th{background:#f1f5f9;color:#005a9c}
   border-radius:10px;
   box-shadow:0 2px 8px rgba(15,43,70,.08);
 }
+
+
+/* Pantalla 9 · Simulación de mejoras */
+.pmf-simulation{display:grid;gap:16px}
+.pmf-sim-card{padding:18px;background:#fff;border:1px solid #d8e0e8;border-radius:10px}
+.pmf-sim-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.pmf-sim-head h3{margin:4px 0 0;color:#005a9c}
+.pmf-sim-head>div>strong{color:#718096;font-size:13px}
+.pmf-sim-compare{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pmf-sim-compare>div{min-width:120px;padding:10px 12px;background:#f7fafc;border:1px solid #e2e8f0;border-radius:8px}
+.pmf-sim-compare span{display:block;color:#718096;font-size:12px}
+.pmf-sim-compare strong{display:block;margin-top:3px;color:#005a9c}
+.pmf-sim-arrow{font-size:22px;color:#718096}
+.pmf-sim-reason{margin:14px 0;color:#526477;font-size:13px;line-height:1.45}
+.pmf-sim-controls{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:12px;margin:14px 0}
+.pmf-sim-controls label{display:flex;flex-direction:column;gap:6px;color:#526477;font-size:12px;font-weight:600}
+.pmf-sim-reset{margin-top:4px}
+.pmf-sim-summary{padding:18px;background:#f7fafc;border:1px solid #e2e8f0;border-radius:10px}
+.pmf-sim-summary h3{margin:0 0 12px;color:#005a9c}
+.pmf-sim-summary ul{margin:0;padding-left:22px}
+.pmf-sim-summary li{margin:8px 0;line-height:1.45}
+@media(max-width:760px){
+  .pmf-sim-head{flex-direction:column}
+  .pmf-sim-controls{grid-template-columns:1fr}
+}
