@@ -2222,6 +2222,7 @@ function renderSimulation() {
     if(!container || !pmfProject) return;
     const sections=pmfProject.analysis?.bodySections||{};
     const store=ensureSimulationStore();
+    store.results = {};
     const groups=[];
     Object.entries(sections).forEach(([section,data])=>{
         const by=new Map();
