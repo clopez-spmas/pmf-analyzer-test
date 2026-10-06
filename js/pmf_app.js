@@ -54,6 +54,10 @@ function bindIdentification() {
 function bindProjectActions() {
     document.getElementById("saveProjectButton")?.addEventListener("click", saveProject);
     document.getElementById("runPMFAnalysisButton")?.addEventListener("click", runPMFAnalysis);
+    document.getElementById("simulationBtn")?.addEventListener("click", () => {
+        renderSimulation();
+        if (typeof goToPMFPage === "function") goToPMFPage("simulation");
+    });
 
     document.getElementById("loadProjectInput")?.addEventListener("change", async event => {
         const file = event.target.files?.[0];
@@ -83,6 +87,7 @@ function renderProject() {
     renderVideoInputs();
     renderVideoJsonSummary();
     renderAnalysisResults();
+    renderSimulation();
 }
 
 function renderIdentification() {
@@ -1762,4 +1767,332 @@ function renderAnalysisResults() {
 
 function formatDeg(value) {
     return Number.isFinite(Number(value)) ? Number(value).toFixed(1) + "°" : "-";
+}
+
+
+function ensureSimulationStore() {
+    pmfProject.analysis = pmfProject.analysis || {};
+    const current = pmfProject.analysis.simulation && typeof pmfProject.analysis.simulation === "object"
+        ? pmfProject.analysis.simulation
+        : {};
+    current.overrides = current.overrides && typeof current.overrides === "object" ? current.overrides : {};
+    current.results = current.results && typeof current.results === "object" ? current.results : {};
+    current.updatedAt = current.updatedAt || null;
+    pmfProject.analysis.simulation = current;
+    return current;
+}
+
+function simulationKey(section, measurement, mode) {
+    return [section, measurement, mode].join("|");
+}
+
+function simulationRank(status) {
+    const R=PMFCriteria.RESULT;
+    return ({[R.NOT_EVALUATED]:0,[R.ACCEPTABLE]:1,[R.NEEDS_CONFIRMATION]:2,[R.NOT_ACCEPTABLE]:3})[status] ?? 0;
+}
+
+function worstSimulationSource(results) {
+    return (results||[]).reduce((worst,r)=>!worst||simulationRank(r.status)>simulationRank(worst.status)?r:worst,null);
+}
+
+function simFinite(value, fallback=null) {
+    const n=Number(value);
+    return Number.isFinite(n)?n:fallback;
+}
+
+function currentSimulationValues(section, measurement, mode, result) {
+    const inputs=result?.traceability?.criterion?.inputs || result?.traceability?.inputs || {};
+    const calc=result?.calculated || {};
+    const study=ensureSectionStudy(section);
+    const v=movementKeyForResult(section,measurement) ? (study.variables?.[movementKeyForResult(section,measurement)]||{}) : {};
+    const values={};
+
+    values.angle=simFinite(inputs.angle,simFinite(calc.extremeAngle,
+        simFinite(calc.evaluationAngle,simFinite(calc.worstEpisode?.averageAngle,null))));
+    values.frequencyPerMinute=simFinite(inputs.frequencyPerMinute,simFinite(calc.frequencyPerMinute,0));
+    values.criticalTimePercent=simFinite(inputs.criticalTimePercent,simFinite(calc.criticalPercent,0));
+    values.staticSeconds=simFinite(calc.totalStaticSeconds,simFinite(calc.worstEpisode?.duration,5));
+    values.fullTrunkSupport=inputs.fullTrunkSupport ?? v.fullSupport ?? v.fullTrunkSupport ?? null;
+    values.fullHeadSupport=inputs.fullHeadSupport ?? v.fullHeadSupport ?? null;
+    values.neckFlexionAngle=simFinite(inputs.neckFlexionAngle,null);
+    values.lumbarConvex=inputs.lumbarConvex ?? study.lumbarConvex ?? null;
+    values.posture=inputs.posture || study.posture || "standing";
+    values.internalAngle=simFinite(inputs.internalAngle,null);
+    values.standingFlexion=simFinite(inputs.standingFlexion,null);
+    values.seatedExcursion=simFinite(inputs.seatedExcursion,null);
+    if(values.internalAngle===null && section.startsWith("lower_") && measurement==="Rodilla"){
+        if(values.posture==="standing" && values.standingFlexion!==null) values.internalAngle=180-values.standingFlexion;
+        else if(values.posture==="seated" && values.seatedExcursion!==null) values.internalAngle=90+values.seatedExcursion;
+        else values.internalAngle=180;
+    }
+    values.ischialSupport=inputs.ischialSupport ?? v.ischialSupport ?? null;
+    values.trunkPosteriorInclined=inputs.trunkPosteriorInclined ?? v.trunkPosteriorInclined ?? null;
+    if(measurement==="Tobillo"){
+        values.angle=simFinite(inputs.dorsiPlantarAngle,values.angle);
+    }
+    return values;
+}
+
+function evaluateSimulation(section, measurement, mode, values) {
+    const R=PMFCriteria.RESULT;
+    if(section==="trunk"){
+        if(measurement==="Postura convexa lumbar"){
+            return PMFCriteria.static.trunk({motion:"lumbar_convex",lumbarConvex:values.lumbarConvex});
+        }
+        if(measurement==="Flexión / extensión"){
+            if(mode==="dynamic"){
+                return PMFCriteria.dynamic.trunkFlexion({
+                    angle:values.angle,
+                    frequencyPerMinute:values.frequencyPerMinute,
+                    fullTrunkSupport:values.fullTrunkSupport
+                });
+            }
+            const dc=values.fullTrunkSupport===false ? trunkStaticDurationCriterion(values.angle,values.staticSeconds) : null;
+            return PMFCriteria.static.trunk({
+                motion:"flexion",
+                angle:values.angle,
+                fullTrunkSupport:values.fullTrunkSupport,
+                durationCriterionResult:dc?.result ?? null
+            });
+        }
+        const motion=measurement==="Inclinación lateral"?"lateral":"rotation";
+        if(mode==="dynamic"){
+            const fn=motion==="lateral"?PMFCriteria.dynamic.trunkLateral:PMFCriteria.dynamic.trunkRotation;
+            return fn({angle:values.angle,frequencyPerMinute:values.frequencyPerMinute,criticalTimePercent:values.criticalTimePercent});
+        }
+        return PMFCriteria.static.trunk({motion,angle:values.angle});
+    }
+
+    if(section==="head_neck"){
+        if(measurement==="Flexión / extensión de cabeza"){
+            if(mode==="dynamic"){
+                return PMFCriteria.dynamic.headFlexion({
+                    angle:values.angle,
+                    frequencyPerMinute:values.frequencyPerMinute,
+                    criticalTimePercent:values.criticalTimePercent
+                });
+            }
+            const dc=values.fullTrunkSupport===true ? headStaticDurationCriterion(values.angle,values.staticSeconds) : null;
+            return PMFCriteria.static.head({
+                motion:"head_flexion",
+                angle:values.angle,
+                fullHeadSupport:values.fullHeadSupport,
+                fullTrunkSupport:values.fullTrunkSupport,
+                neckFlexionAngle:values.neckFlexionAngle,
+                durationCriterionResult:dc?.result ?? null
+            });
+        }
+        const motion=measurement==="Lateralización de cabeza"?"lateral":"rotation";
+        if(mode==="dynamic"){
+            const fn=motion==="lateral"?PMFCriteria.dynamic.headLateral:PMFCriteria.dynamic.headRotation;
+            return fn({angle:values.angle,frequencyPerMinute:values.frequencyPerMinute,criticalTimePercent:values.criticalTimePercent});
+        }
+        return PMFCriteria.static.head({motion,angle:values.angle});
+    }
+
+    if(section==="lower_right" || section==="lower_left"){
+        if(measurement==="Rodilla"){
+            const posture=values.posture==="seated"?"seated":"standing";
+            const internal=Number(values.internalAngle);
+            const standingFlexion=180-internal;
+            const seatedExcursion=Math.abs(internal-90);
+            if(mode==="dynamic"){
+                return PMFCriteria.lowerLimb.kneeDynamic({
+                    posture,
+                    internalAngle:internal,
+                    standingFlexion,
+                    seatedExcursion,
+                    frequencyPerMinute:values.frequencyPerMinute
+                });
+            }
+            return PMFCriteria.static.knee({
+                posture,
+                internalAngle:internal,
+                standingFlexion,
+                ischialSupport:values.ischialSupport,
+                trunkPosteriorInclined:values.trunkPosteriorInclined
+            });
+        }
+        if(measurement==="Tobillo"){
+            if(mode==="dynamic"){
+                return PMFCriteria.lowerLimb.ankleDynamic({
+                    dorsiPlantarAngle:values.angle,
+                    frequencyPerMinute:values.frequencyPerMinute
+                });
+            }
+            return PMFCriteria.static.ankle({dorsiPlantarAngle:values.angle});
+        }
+    }
+    return {status:R.NOT_EVALUATED,reason:"No se ha definido la simulación para este criterio.",criterionId:"SIM_NOT_DEFINED",inputs:{}};
+}
+
+function simBoolSelect(label,name,value) {
+    return '<label>'+escapeHtml(label)+'<select data-sim-field="'+name+'"><option value="" '+(value===null?"selected":"")+'>-- seleccionar --</option><option value="true" '+(value===true?"selected":"")+'>Sí</option><option value="false" '+(value===false?"selected":"")+'>No</option></select></label>';
+}
+function simNumber(label,name,value,step="0.1",min=null,max=null) {
+    return '<label>'+escapeHtml(label)+'<input type="number" data-sim-field="'+name+'" step="'+step+'"'+(min!==null?' min="'+min+'"':'')+(max!==null?' max="'+max+'"':'')+' value="'+escapeHtml(value??"")+'"></label>';
+}
+function simFrequency(value) {
+    return '<label>Frecuencia<select data-sim-field="frequencyPerMinute"><option value="0" '+(Number(value)<2?"selected":"")+'>‹ 2 movimientos/minuto</option><option value="2" '+(Number(value)>=2?"selected":"")+'>≥ 2 movimientos/minuto</option></select></label>';
+}
+function simCriticalTime(value) {
+    return '<label>Tiempo en postura crítica<select data-sim-field="criticalTimePercent"><option value="60" '+(Number(value)<=60?"selected":"")+'>≤ 60% del tiempo de la tarea</option><option value="60.01" '+(Number(value)>60?"selected":"")+'>› 60% del tiempo de la tarea</option></select></label>';
+}
+
+function simulationControls(section,measurement,mode,v) {
+    let out="";
+    if(section==="trunk"){
+        if(measurement==="Postura convexa lumbar") return simBoolSelect("Postura convexa lumbar","lumbarConvex",v.lumbarConvex);
+        out+=simNumber("Ángulo (°)","angle",v.angle);
+        if(mode==="dynamic") out+=simFrequency(v.frequencyPerMinute);
+        if(mode==="dynamic" && (measurement==="Inclinación lateral"||measurement==="Rotación axial")) out+=simCriticalTime(v.criticalTimePercent);
+        if(measurement==="Flexión / extensión"){
+            out+=simBoolSelect("Soporte completo del tronco","fullTrunkSupport",v.fullTrunkSupport);
+            if(mode==="static") out+=simNumber("Duración de la postura (s)","staticSeconds",v.staticSeconds,"0.1","0");
+        }
+        return out;
+    }
+    if(section==="head_neck"){
+        out+=simNumber(measurement==="Flexión / extensión de cabeza"?"Ángulo de cabeza β (°)":"Ángulo (°)","angle",v.angle);
+        if(mode==="dynamic"){out+=simFrequency(v.frequencyPerMinute);out+=simCriticalTime(v.criticalTimePercent);}
+        if(mode==="static" && measurement==="Flexión / extensión de cabeza"){
+            out+=simNumber("Duración de la postura (s)","staticSeconds",v.staticSeconds,"0.1","0");
+            out+=simBoolSelect("Soporte completo de cabeza","fullHeadSupport",v.fullHeadSupport);
+            out+=simBoolSelect("Soporte completo del tronco","fullTrunkSupport",v.fullTrunkSupport);
+            out+=simNumber("Flexo-extensión de cuello β−α (°)","neckFlexionAngle",v.neckFlexionAngle);
+        }
+        return out;
+    }
+    if(section==="lower_right"||section==="lower_left"){
+        if(measurement==="Rodilla"){
+            out+='<label>Postura de referencia<select data-sim-field="posture"><option value="standing" '+(v.posture==="standing"?"selected":"")+'>De pie</option><option value="seated" '+(v.posture==="seated"?"selected":"")+'>Sentado/a</option></select></label>';
+            out+=simNumber("Ángulo interno de rodilla (°)","internalAngle",v.internalAngle);
+            if(mode==="dynamic") out+=simFrequency(v.frequencyPerMinute);
+            if(mode==="static"){
+                out+=simBoolSelect("Apoyo isquiotibial","ischialSupport",v.ischialSupport);
+                out+=simBoolSelect("Tronco posteriormente inclinado","trunkPosteriorInclined",v.trunkPosteriorInclined);
+            }
+            return out;
+        }
+        if(measurement==="Tobillo"){
+            out+=simNumber("Ángulo de tobillo (°; + dorsiflexión / − plantar)","angle",v.angle);
+            if(mode==="dynamic") out+=simFrequency(v.frequencyPerMinute);
+            return out;
+        }
+    }
+    return out;
+}
+
+function simulationFieldLabel(field) {
+    return ({
+        angle:"Ángulo",
+        frequencyPerMinute:"Frecuencia",
+        criticalTimePercent:"Tiempo en postura crítica",
+        staticSeconds:"Duración",
+        fullTrunkSupport:"Soporte completo del tronco",
+        fullHeadSupport:"Soporte completo de cabeza",
+        neckFlexionAngle:"Flexo-extensión de cuello β−α",
+        lumbarConvex:"Postura convexa lumbar",
+        posture:"Postura de referencia",
+        internalAngle:"Ángulo interno de rodilla",
+        ischialSupport:"Apoyo isquiotibial",
+        trunkPosteriorInclined:"Tronco posteriormente inclinado"
+    })[field]||field;
+}
+function simulationValueText(field,value) {
+    if(value===true)return "Sí";
+    if(value===false)return "No";
+    if(value===null||value===undefined||value==="")return "—";
+    if(field==="posture")return value==="seated"?"Sentado/a":"De pie";
+    if(field==="frequencyPerMinute")return Number(value)>=2?"≥ 2 movimientos/minuto":"< 2 movimientos/minuto";
+    if(field==="criticalTimePercent")return Number(value)>60?"> 60% del tiempo de la tarea":"≤ 60% del tiempo de la tarea";
+    if(["angle","neckFlexionAngle","internalAngle"].includes(field))return Number(value).toFixed(1)+"°";
+    if(field==="staticSeconds")return Number(value).toFixed(1)+" s";
+    return String(value);
+}
+
+function renderSimulation() {
+    const container=document.getElementById("simulationContent");
+    if(!container || !pmfProject) return;
+    const sections=pmfProject.analysis?.bodySections||{};
+    const store=ensureSimulationStore();
+    const groups=[];
+    Object.entries(sections).forEach(([section,data])=>{
+        const by=new Map();
+        (data?.results||[]).forEach(r=>{
+            if(!r?.measurement || !["static","dynamic"].includes(r.mode)) return;
+            const k=simulationKey(section,r.measurement,r.mode);
+            if(!by.has(k))by.set(k,[]);
+            by.get(k).push(r);
+        });
+        by.forEach((results,key)=>{
+            const current=worstSimulationSource(results);
+            if(current && current.status!==PMFCriteria.RESULT.NOT_EVALUATED) groups.push({section,key,current});
+        });
+    });
+    if(!groups.length){
+        container.innerHTML='<div class="placeholder">Todavía no hay resultados evaluados para simular.</div>';
+        return;
+    }
+
+    const cards=groups.map(({section,key,current})=>{
+        const base=currentSimulationValues(section,current.measurement,current.mode,current);
+        const override=store.overrides[key]||{};
+        const values={...base,...override};
+        const simulated=evaluateSimulation(section,current.measurement,current.mode,values);
+        store.results[key]={
+            section,measurement:current.measurement,mode:current.mode,
+            currentStatus:current.status,simulatedStatus:simulated.status,
+            reason:simulated.reason,values:PMFStorage.deepClone(values)
+        };
+        const sectionLabel=sections[section]?.label||section;
+        return '<article class="pmf-sim-card" data-sim-key="'+escapeHtml(key)+'">'+
+            '<div class="pmf-sim-head"><div><strong>'+escapeHtml(sectionLabel)+'</strong><h3>'+escapeHtml(current.measurement)+' · '+(current.mode==="static"?"Estática":"Dinámica")+'</h3></div>'+
+            '<div class="pmf-sim-compare"><div><span>Actual</span><strong>'+escapeHtml(current.status)+'</strong></div><span class="pmf-sim-arrow">→</span><div><span>Simulado</span><strong>'+escapeHtml(simulated.status)+'</strong></div></div></div>'+
+            '<div class="pmf-sim-reason">'+escapeHtml(simulated.reason||"")+'</div>'+
+            '<div class="pmf-sim-controls">'+simulationControls(section,current.measurement,current.mode,values)+'</div>'+
+            '<button type="button" class="nav-secondary pmf-sim-reset" data-sim-reset>Restablecer esta simulación</button>'+
+        '</article>';
+    }).join("");
+
+    const changes=[];
+    groups.forEach(({section,key,current})=>{
+        const base=currentSimulationValues(section,current.measurement,current.mode,current);
+        const override=store.overrides[key]||{};
+        Object.keys(override).forEach(field=>{
+            const before=base[field],after=override[field];
+            if(String(before)!==String(after)){
+                changes.push('<li><strong>'+escapeHtml((sections[section]?.label||section)+' · '+current.measurement+' · '+(current.mode==="static"?"Estática":"Dinámica"))+'</strong>: '+escapeHtml(simulationFieldLabel(field))+' · '+escapeHtml(simulationValueText(field,before))+' → <strong>'+escapeHtml(simulationValueText(field,after))+'</strong></li>');
+            }
+        });
+    });
+    const summary='<section class="pmf-sim-summary"><h3>Resumen de cambios simulados</h3>'+(changes.length?'<ul>'+changes.join("")+'</ul>':'<p class="pmf-note">Todavía no se han realizado cambios sobre las condiciones actuales.</p>')+'</section>';
+
+    container.innerHTML='<div class="notice"><strong>El estudio original no se modifica.</strong> Cambie únicamente las condiciones que quiera mejorar; el programa recalcula el resultado de cada postura.</div>'+cards+summary;
+    store.updatedAt=new Date().toISOString();
+
+    container.querySelectorAll(".pmf-sim-card").forEach(card=>{
+        const key=card.dataset.simKey;
+        card.querySelectorAll("[data-sim-field]").forEach(control=>{
+            control.addEventListener("change",()=>{
+                const field=control.dataset.simField;
+                let value=control.value;
+                if(["fullTrunkSupport","fullHeadSupport","lumbarConvex","ischialSupport","trunkPosteriorInclined"].includes(field)){
+                    value=value==="true"?true:value==="false"?false:null;
+                }else if(field!=="posture"){
+                    value=value===""?null:Number(value);
+                }
+                store.overrides[key]=store.overrides[key]||{};
+                store.overrides[key][field]=value;
+                touchProject(false);
+                renderSimulation();
+            });
+        });
+        card.querySelector("[data-sim-reset]")?.addEventListener("click",()=>{
+            delete store.overrides[key];
+            delete store.results[key];
+            touchProject(false);
+            renderSimulation();
+        });
+    });
 }
