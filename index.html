@@ -32,7 +32,7 @@
   <button type="button" id="loadProjectButton" class="toolbar-btn">Cargar estudio</button>
   <button type="button" id="newStudyButton" class="toolbar-btn">Nuevo estudio</button>
   <button type="button" id="simulationBtn" class="toolbar-btn">Ir a simulación</button>
-  <button type="button" id="wordTablesBtn" class="toolbar-btn" disabled title="Función pendiente de incorporar en PMF">Tablas para Word</button>
+  <button type="button" id="wordTablesBtn" class="toolbar-btn">Tablas para Word</button>
   <button type="button" id="instructionsBtn" class="toolbar-btn" disabled title="Instrucciones PMF pendientes de preparar">Instrucciones de uso</button>
   <input id="loadProjectInput" type="file" accept=".json,application/json" hidden>
 </section>
@@ -96,6 +96,11 @@
 <section class="screen" data-screen="8" data-page-name="simulation">
   <div class="screen-title"><span>9</span><div><h2>Simulación de mejoras</h2><p>Modifique las condiciones de cada postura y compare el resultado actual con el simulado. El estudio original no se modifica.</p></div></div>
   <div id="simulationContent" class="pmf-simulation"><div class="placeholder">Todavía no hay resultados evaluados para simular.</div></div>
+</section>
+
+<section class="screen" data-screen="9" data-page-name="word_tables">
+  <div class="screen-title"><span>10</span><div><h2>Tablas para Word</h2><p>Tablas independientes por segmento corporal y resultados de la simulación, preparadas para copiar y pegar en Word.</p></div></div>
+  <div id="wordTablesContent" class="pmf-word-tables"><div class="placeholder">Todavía no hay resultados disponibles.</div></div>
 </section>
 
 </main>
