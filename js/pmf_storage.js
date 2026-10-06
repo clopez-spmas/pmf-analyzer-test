@@ -44,7 +44,12 @@ function pmfCreateEmptyProject() {
                     knee:{source:"kinovea"}, ankle:{source:"kinovea"}
                 } }
             },
-            traceability: {}
+            traceability: {},
+            simulation: {
+                overrides: {},
+                results: {},
+                updatedAt: null
+            }
         }
     };
 }
@@ -63,6 +68,9 @@ function pmfNormalizeProject(candidate) {
     project.configuration = Object.assign(base.configuration, candidate.configuration || {});
     project.analysis = Object.assign(base.analysis, candidate.analysis || {});
     project.analysis.sectionStudy = Object.assign(base.analysis.sectionStudy, candidate.analysis?.sectionStudy || {});
+    project.analysis.simulation = Object.assign(base.analysis.simulation, candidate.analysis?.simulation || {});
+    project.analysis.simulation.overrides = Object.assign({}, candidate.analysis?.simulation?.overrides || {});
+    project.analysis.simulation.results = Object.assign({}, candidate.analysis?.simulation?.results || {});
     Object.keys(base.analysis.sectionStudy).forEach(key => {
         project.analysis.sectionStudy[key] = Object.assign(base.analysis.sectionStudy[key], candidate.analysis?.sectionStudy?.[key] || {});
         project.analysis.sectionStudy[key].variables = Object.assign({}, candidate.analysis?.sectionStudy?.[key]?.variables || {});
