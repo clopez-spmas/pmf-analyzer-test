@@ -1,12 +1,15 @@
 "use strict";
 
 let pmfProject = null;
+let pmfHasUnsavedChanges = false;
 
 document.addEventListener("DOMContentLoaded", () => {
     pmfProject = PMFStorage.createEmptyProject();
+    pmfHasUnsavedChanges = false;
     buildVideoCountSelector();
     bindIdentification();
     bindProjectActions();
+    bindUnsavedChangesWarning();
     renderProject();
 });
 
@@ -66,6 +69,7 @@ function bindProjectActions() {
         try {
             const json = await PMFStorage.readJsonFile(file);
             pmfProject = PMFStorage.normalizeProject(json);
+            pmfHasUnsavedChanges = false;
             renderProject();
 
         } catch (error) {
@@ -279,17 +283,42 @@ function renderAnalysisSummary() {
     });
 }
 
-function saveProject() {
+async function saveProject() {
     syncIdentificationFromUI();
-    touchProject(false);
+    pmfProject.updatedAt = new Date().toISOString();
 
     const task = (pmfProject.identification.task || "Tarea")
         .trim()
         .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ_-]+/g, "_")
         .replace(/^_+|_+$/g, "");
+    const suggestedName = `PMF_${task || "Estudio"}.json`;
+    const clean = PMFStorage.deepClone(pmfProject);
+    const jsonText = JSON.stringify(clean, null, 2);
 
-    PMFStorage.downloadProject(pmfProject, `PMF_${task || "Estudio"}.json`);
-
+    try {
+        if (typeof window.showSaveFilePicker === "function") {
+            const handle = await window.showSaveFilePicker({
+                suggestedName,
+                types: [{
+                    description: "Archivo JSON del estudio",
+                    accept: {"application/json": [".json"]}
+                }]
+            });
+            const writable = await handle.createWritable();
+            await writable.write(jsonText);
+            await writable.close();
+        } else {
+            const requestedName = window.prompt("Nombre del archivo JSON:", suggestedName);
+            if (!requestedName) return;
+            const finalName = requestedName.toLowerCase().endsWith(".json") ? requestedName : requestedName + ".json";
+            PMFStorage.downloadProject(clean, finalName);
+        }
+        pmfHasUnsavedChanges = false;
+    } catch (error) {
+        if (error?.name === "AbortError") return;
+        setStatus("No se pudo guardar el estudio.", "error");
+        console.error(error);
+    }
 }
 
 function syncIdentificationFromUI() {
@@ -303,8 +332,20 @@ function syncIdentificationFromUI() {
 
 function touchProject(updateStatus = true) {
     pmfProject.updatedAt = new Date().toISOString();
+    pmfHasUnsavedChanges = true;
     if (updateStatus) setStatus("Estudio modificado. Guarda el JSON para conservar los cambios.");
 }
+
+function bindUnsavedChangesWarning() {
+    window.addEventListener("beforeunload", event => {
+        if (!pmfHasUnsavedChanges) return;
+        event.preventDefault();
+        event.returnValue = "";
+    });
+}
+
+window.hasUnsavedPMFChanges = () => pmfHasUnsavedChanges;
+window.discardUnsavedPMFChanges = () => { pmfHasUnsavedChanges = false; };
 
 function setStatus(message, type = "") {
     const element = document.getElementById("projectStatus");
