@@ -263,16 +263,20 @@ function evaluateKneeStatic({ posture, internalAngle, standingFlexion, ischialSu
     if(posture==="standing"){
         const flex=Number(standingFlexion);
         if(!Number.isFinite(flex)) return pmfResult(PMF_RESULT.NOT_EVALUATED,"Falta flexión de rodilla válida.","STAT_KNEE_STANDING");
-        if(ischialSupport===true){
-            return pmfResult(PMF_RESULT.ACCEPTABLE,"Postura de pie con apoyo isquiotibial.","STAT_KNEE_STANDING_ISCHIAL",{standingFlexion:flex,ischialSupport});
-        }
-        if(flex < 135){
-            return pmfResult(PMF_RESULT.ACCEPTABLE,"Flexión estática de rodilla de pie inferior a 135°.","STAT_KNEE_STANDING_LT135",{standingFlexion:flex,ischialSupport});
+        if(flex<=0){
+            return pmfResult(PMF_RESULT.ACCEPTABLE,"Rodilla de pie en extensión completa (180°).","STAT_KNEE_STANDING_180",{standingFlexion:flex,ischialSupport});
         }
         if(ischialSupport===null){
             return pmfResult(PMF_RESULT.NEEDS_CONFIRMATION,"Debe confirmarse si existe apoyo isquiotibial.","STAT_KNEE_STANDING_SUPPORT",{standingFlexion:flex});
         }
-        return pmfResult(PMF_RESULT.NOT_ACCEPTABLE,"Flexión estática de rodilla de pie en el límite o superior sin apoyo isquiotibial.","STAT_KNEE_STANDING_135",{standingFlexion:flex,ischialSupport});
+        return pmfResult(
+            ischialSupport ? PMF_RESULT.ACCEPTABLE : PMF_RESULT.NOT_ACCEPTABLE,
+            ischialSupport
+                ? "Flexión estática de rodilla de pie con apoyo isquiotibial."
+                : "Flexión estática de rodilla de pie sin apoyo isquiotibial.",
+            "STAT_KNEE_STANDING_SUPPORT",
+            {standingFlexion:flex,ischialSupport}
+        );
     }
 
     if(posture==="seated"){
