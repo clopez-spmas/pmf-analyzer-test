@@ -117,7 +117,7 @@ th{background:#f1f5f9;color:#005a9c}
   gap:8px;
   margin:0;
 }
-.pmf-cell-stack label{
+.pmf-study-controls .compact-table .pmf-cell-stack label{
   display:grid;
   grid-template-rows:minmax(34px,auto) 40px;
   align-items:start;
@@ -127,7 +127,7 @@ th{background:#f1f5f9;color:#005a9c}
 }
 /* La primera fila de controles debe arrancar a la misma altura en todas
    las columnas, aunque el texto de la etiqueta ocupe una, dos o tres líneas. */
-.pmf-cell-stack > label:first-child{
+.pmf-study-controls .compact-table .pmf-cell-stack > label:first-child{
   grid-template-rows:54px 40px;
 }
 .pmf-cell-stack label > input,
