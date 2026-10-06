@@ -201,3 +201,17 @@ th{background:#f1f5f9;color:#005a9c}
   .pmf-sim-head{flex-direction:column}
   .pmf-sim-controls{grid-template-columns:1fr}
 }
+
+
+/* Página de tablas listas para copiar a Word */
+.pmf-word-tables{display:flex;flex-direction:column;gap:24px}
+.pmf-word-block{padding:18px;background:#fff;border:1px solid #d8e0e8;border-radius:10px}
+.pmf-word-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.pmf-word-heading h3{margin:0;color:#005a9c}
+.pmf-word-copy-target{overflow-x:auto}
+.pmf-word-copy-target table{table-layout:fixed}
+.pmf-word-copy-target th,.pmf-word-copy-target td{vertical-align:top}
+@media(max-width:760px){
+  .pmf-word-heading{align-items:flex-start;flex-direction:column}
+  .pmf-word-copy-target table{min-width:760px}
+}
