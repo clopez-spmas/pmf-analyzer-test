@@ -573,7 +573,7 @@ function classifyRecord(record) {
     // CABEZA/CUELLO DINÁMICO
     {
         const defs=[
-            ["head_flexion_signed","Flexión / extensión de cabeza",v=>v>=-40&&v<=0,v=>v>0||v<-40,PMFCriteria.dynamic.headFlexion],
+            ["head_flexion_signed","Flexión / extensión de cabeza",v=>v>=0&&v<=40,v=>v<0||v>40,PMFCriteria.dynamic.headFlexion],
             ["head_lateral_signed","Lateralización de cabeza",v=>v>=-10&&v<=10,v=>v<-10||v>10,PMFCriteria.dynamic.headLateral],
             ["head_axial_rotation_signed","Rotación axial de cabeza",v=>v>=-45&&v<=45,v=>v<-45||v>45,PMFCriteria.dynamic.headRotation]
         ];
@@ -1137,6 +1137,10 @@ function headRotationBandAngle(band) {
     return ({ltNeg45:-46,fromNeg45to45:0,gt45:46})[band] ?? null;
 }
 
+function headDynamicFlexBandAngle(band) {
+    return ({lt0:-1,from0to40:20,gt40:41})[band] ?? null;
+}
+
 function headStaticMaxAcceptableSeconds(angle) {
     const a=Number(angle);
     if(!Number.isFinite(a) || a<=25 || a>85) return null;
@@ -1312,8 +1316,40 @@ function buildManualSection(key) {
             const tv=manualTimeValues(study,v.time);
 
             if(def.kind==="headFlex"){
-                if(tv.seconds<=PMFCriteria.LIMITS.staticMinSeconds) return;
                 const raw=vars.flexion||{};
+
+                // Dinámica: convención PMF = flexión hacia delante positiva.
+                // 0°–40° aceptable; <0° o >40° requiere frecuencia y,
+                // cuando la frecuencia es <2 mov/min, porcentaje de tiempo crítico.
+                const dynamicAngle=headDynamicFlexBandAngle(raw.dynamicAngleBand);
+                if(Number.isFinite(dynamicAngle)){
+                    const dynamicFrequency=raw.dynamicFrequencyBand==="gte2" ? 2 : 0;
+                    const dynamicCriticalPercent=raw.dynamicCriticalTimeBand==="gt60"
+                        ? 60.01
+                        : (raw.dynamicCriticalTimeBand==="lte60" ? 60 : null);
+                    const dyn=PMFCriteria.dynamic.headFlexion({
+                        angle:dynamicAngle,
+                        frequencyPerMinute:dynamicFrequency,
+                        criticalTimePercent:dynamicCriticalPercent
+                    });
+                    results.push(pmfManualResult(
+                        key,
+                        "dynamic",
+                        def.label,
+                        {
+                            extremeAngle:dynamicAngle,
+                            angleBand:raw.dynamicAngleBand||null,
+                            frequencyBand:raw.dynamicFrequencyBand||"lt2",
+                            frequencyPerMinute:dynamicFrequency,
+                            criticalTimeBand:raw.dynamicCriticalTimeBand||null,
+                            criticalPercent:dynamicCriticalPercent
+                        },
+                        dyn
+                    ));
+                }
+
+                // Estática: mantiene sus datos y lógica independientes.
+                if(tv.seconds<=PMFCriteria.LIMITS.staticMinSeconds) return;
                 const supports=headStaticSupportValues();
                 const exactAngle=raw.staticAngleBand==="gt25to85" ? Number(raw.staticExactAngle) : v.angle;
                 const manualTrunkAlpha=Number(raw.trunkAlpha);
@@ -1405,7 +1441,7 @@ function buildManualSection(key) {
 function pmfSectionHelp(sectionKey) {
     const helps = {
         trunk: '<details class="help-panel"><summary>ⓘ Ayuda: ejemplos de posturas de espalda</summary><div class="help-content"><p><strong>Flexión / extensión (inclinarse hacia delante o hacia atrás):</strong> por ejemplo al recoger algo del suelo, hacer una cama, trabajar sobre una mesa baja, mirar una balda alta o alcanzar algo situado por encima y detrás.</p><p><strong>Inclinación lateral (inclinarse hacia un lado):</strong> por ejemplo al coger algo situado junto a una silla, alcanzar una pieza colocada a un lado o acercarse lateralmente a una persona o máquina.</p><p><strong>Rotación (girar el cuerpo):</strong> por ejemplo al mirar hacia atrás desde un asiento, mover objetos entre dos zonas situadas a ambos lados o girarse repetidamente hacia una cinta.</p><p><strong>Postura convexa lumbar (espalda baja redondeada al estar sentado/a):</strong> se produce cuando la zona lumbar pierde su curvatura habitual y queda redondeada hacia atrás durante la posición sentada. Por ejemplo, al sentarse encorvado/a sin apoyo lumbar o trabajar sentado/a inclinado hacia delante durante periodos prolongados. Solo se valora cuando la tarea incluye trabajo en posición sentada.</p></div></details>',
-        head_neck: '<details class="help-panel"><summary>ⓘ Ayuda: medición y ejemplos de posturas de cabeza y cuello</summary><div class="help-content"><p><strong>Cómo medir manualmente el ángulo β de flexión/extensión de cabeza:</strong></p><p>1. Utilice una <strong>vista lateral</strong> en la que se vea con claridad la cabeza y el tronco.</p><p>2. Tome como referencia la <strong>postura neutra de cabeza = 0°</strong>: cabeza erguida, sin mirar hacia arriba ni hacia abajo.</p><p>3. En el vídeo, identifique el fotograma o periodo en el que se mantiene la postura de cabeza que quiere valorar. Para considerarla estática debe mantenerse durante <strong>más de 4 segundos</strong>.</p><p>4. Trace una línea entre la <strong>frente</strong> y la <strong>parte posterior de la cabeza, por encima de la nuca</strong>. Utilice siempre esas mismas zonas como referencia y compare la línea con la postura neutra.</p><p>5. Introduzca como β la <strong>desviación respecto a 0°</strong>, no el ángulo absoluto que pueda mostrar la herramienta de medición del vídeo. La inclinación hacia delante es positiva; la extensión hacia atrás es negativa.</p><div class="pmf-help-image-wrap"><img class="pmf-help-image" src="assets/angulo_beta_help.png" alt="Esquema para medir el ángulo beta de flexión y extensión de cabeza"></div><p><strong>Ejemplo:</strong> si desde la posición neutra la cabeza se inclina 35° hacia delante, β = 35°. Si se inclina 10° hacia atrás, β = −10°.</p><p><strong>Flexión / extensión de cabeza:</strong> por ejemplo al mirar el móvil, leer sobre una mesa, revisar piezas pequeñas, mirar una balda alta o inspeccionar una instalación elevada.</p><p><strong>Lateralización de cabeza:</strong> utilice una <strong>vista frontal o posterior</strong> y tome 0° como postura neutra. La inclinación hacia la <strong>derecha se registra con signo positivo (+)</strong> y hacia la <strong>izquierda con signo negativo (−)</strong>. Para Kinovea se utilizan cuello, punto anterior de cabeza y punto posterior de cabeza. Por ejemplo, al sujetar un teléfono entre el hombro y la oreja o inclinar la cabeza lateralmente para observar una zona de trabajo.</p><p><strong>Rotación axial de cabeza:</strong> tome 0° como posición neutra. El giro hacia la <strong>derecha se registra con signo positivo (+)</strong> y hacia la <strong>izquierda con signo negativo (−)</strong>. Para Kinovea se utilizan <strong>oreja derecha + oreja izquierda</strong>, con vista recomendada <strong>3/4</strong>. Por ejemplo, al mirar hacia atrás al aparcar, vigilar una pantalla lateral o mirar alternativamente dos zonas de trabajo.</p></div></details>',
+        head_neck: '<details class="help-panel"><summary>ⓘ Ayuda: medición y ejemplos de posturas de cabeza y cuello</summary><div class="help-content"><p><strong>Cómo medir manualmente el ángulo β de flexión/extensión de cabeza:</strong></p><p>1. Utilice una <strong>vista lateral</strong> en la que se vea con claridad la cabeza y el tronco.</p><p>2. Tome como referencia la <strong>postura neutra de cabeza = 0°</strong>: cabeza erguida, sin mirar hacia arriba ni hacia abajo.</p><p>3. En el vídeo, identifique el fotograma o periodo en el que se mantiene la postura de cabeza que quiere valorar. Para considerarla estática debe mantenerse durante <strong>más de 4 segundos</strong>.</p><p>4. Trace una línea entre la <strong>frente</strong> y la <strong>parte posterior de la cabeza, por encima de la nuca</strong>. Utilice siempre esas mismas zonas como referencia y compare la línea con la postura neutra.</p><p>5. Introduzca como β la <strong>desviación respecto a 0°</strong>, no el ángulo absoluto que pueda mostrar la herramienta de medición del vídeo. La inclinación hacia delante es positiva; la extensión hacia atrás es negativa.</p><div class="pmf-help-image-wrap"><img class="pmf-help-image" src="assets/angulo_beta_help.png" alt="Esquema para medir el ángulo beta de flexión y extensión de cabeza"></div><p><strong>Ejemplo:</strong> si desde la posición neutra la cabeza se inclina 35° hacia delante, β = 35°. Si se inclina 10° hacia atrás, β = −10°.</p><p><strong>Flexión / extensión de cabeza:</strong> por ejemplo al mirar el móvil, leer sobre una mesa, revisar piezas pequeñas, mirar una balda alta o inspeccionar una instalación elevada.</p><p><strong>Dinámica de flexión/extensión:</strong> en este programa mantenemos la misma convención de signo que en la valoración estática: <strong>flexión hacia delante = positiva (+)</strong> y <strong>extensión hacia atrás = negativa (−)</strong>. Por equivalencia con el criterio metodológico, el rango aceptable es <strong>0° a 40°</strong>; son zonas críticas los valores <strong>&lt;0°</strong> o <strong>&gt;40°</strong>. Si la frecuencia es inferior a 2 movimientos/minuto, se valora además si la postura crítica ocupa más del 60% del tiempo de la tarea.</p><p><strong>Lateralización de cabeza:</strong> utilice una <strong>vista frontal o posterior</strong> y tome 0° como postura neutra. La inclinación hacia la <strong>derecha se registra con signo positivo (+)</strong> y hacia la <strong>izquierda con signo negativo (−)</strong>. Para Kinovea se utilizan cuello, punto anterior de cabeza y punto posterior de cabeza. Por ejemplo, al sujetar un teléfono entre el hombro y la oreja o inclinar la cabeza lateralmente para observar una zona de trabajo.</p><p><strong>Rotación axial de cabeza:</strong> tome 0° como posición neutra. El giro hacia la <strong>derecha se registra con signo positivo (+)</strong> y hacia la <strong>izquierda con signo negativo (−)</strong>. Para Kinovea se utilizan <strong>oreja derecha + oreja izquierda</strong>, con vista recomendada <strong>3/4</strong>. Por ejemplo, al mirar hacia atrás al aparcar, vigilar una pantalla lateral o mirar alternativamente dos zonas de trabajo.</p></div></details>',
         lower_right: '<details class="help-panel"><summary>ⓘ Ayuda: ejemplos de posturas de la extremidad inferior derecha</summary><div class="help-content"><p><strong>Rodilla (doblar la rodilla):</strong> por ejemplo al ponerse en cuclillas, arrodillarse, sentarse en un asiento bajo o trabajar agachado cerca del suelo.</p><p><strong>Tobillo (llevar la rodilla hacia delante con el talón apoyado o ponerse de puntillas):</strong> por ejemplo al hacer una sentadilla profunda, trabajar agachado con el pie apoyado, accionar algunos pedales o alcanzar algo situado alto.</p></div></details>',
         lower_left: '<details class="help-panel"><summary>ⓘ Ayuda: ejemplos de posturas de la extremidad inferior izquierda</summary><div class="help-content"><p><strong>Rodilla (doblar la rodilla):</strong> por ejemplo al ponerse en cuclillas, arrodillarse, sentarse en un asiento bajo o trabajar agachado cerca del suelo.</p><p><strong>Tobillo (llevar la rodilla hacia delante con el talón apoyado o ponerse de puntillas):</strong> por ejemplo al hacer una sentadilla profunda, trabajar agachado con el pie apoyado, accionar algunos pedales o alcanzar algo situado alto.</p></div></details>'
     };
@@ -1432,12 +1468,14 @@ function sectionStudyControls(key) {
               : (key==="trunk" && def.key==="rotation"
                   ? '<label>Intervalo angular<select data-pmf-trunk-rotation-band><option value="">-- seleccionar --</option><option value="ltNeg10" '+(v.angleBand==="ltNeg10"?"selected":"")+'>‹ -10°</option><option value="fromNeg10to10" '+(v.angleBand==="fromNeg10to10"?"selected":"")+'>-10° a 10° (incluidos)</option><option value="gt10" '+(v.angleBand==="gt10"?"selected":"")+'>› 10°</option></select></label>'
                   : (key==="head_neck" && def.key==="flexion"
-                      ? '<label>Inclinación de cabeza β<select data-pmf-head-static-band><option value="">-- seleccionar --</option><option value="lt0" '+(v.staticAngleBand==="lt0"?"selected":"")+'>‹ 0°</option><option value="from0to25" '+(v.staticAngleBand==="from0to25"?"selected":"")+'>0°–25° (incluidos)</option><option value="gt25to85" '+(v.staticAngleBand==="gt25to85"?"selected":"")+'>›25°–85° (85° incluido)</option><option value="gt85" '+(v.staticAngleBand==="gt85"?"selected":"")+'>› 85°</option></select></label>'+
+                      ? '<div class="pmf-subcriterion"><strong>Estática</strong></div><label>Inclinación de cabeza β<select data-pmf-head-static-band><option value="">-- seleccionar --</option><option value="lt0" '+(v.staticAngleBand==="lt0"?"selected":"")+'>‹ 0°</option><option value="from0to25" '+(v.staticAngleBand==="from0to25"?"selected":"")+'>0°–25° (incluidos)</option><option value="gt25to85" '+(v.staticAngleBand==="gt25to85"?"selected":"")+'>›25°–85° (85° incluido)</option><option value="gt85" '+(v.staticAngleBand==="gt85"?"selected":"")+'>› 85°</option></select></label>'+
                         (v.staticAngleBand==="gt25to85"?'<label>Ángulo exacto de cabeza β (0° = neutra)<input type="number" min="25.01" max="85" step="0.1" data-pmf-head-static-exact value="'+escapeHtml(v.staticExactAngle ?? "")+'"></label>':'')+
                         (v.staticAngleBand==="gt25to85" && v.fullTrunkSupport===false
                           ? '<label>Ángulo de tronco α (0° = neutra)<input type="number" step="0.1" data-pmf-head-trunk-alpha value="'+escapeHtml(v.trunkAlpha ?? "")+'"></label>'+
                             '<div class="notice">Para calcular β − α en entrada manual, introduzca el ángulo α correspondiente a la misma postura observada.</div>'
-                          : '')
+                          : '')+
+                        '<div class="pmf-subcriterion"><strong>Dinámica</strong></div>'+
+                        '<label>Intervalo angular dinámico · flexión (+) / extensión (−)<select data-pmf-head-dynamic-flex-band><option value="">-- seleccionar --</option><option value="lt0" '+(v.dynamicAngleBand==="lt0"?"selected":"")+'>‹ 0° · extensión</option><option value="from0to40" '+(v.dynamicAngleBand==="from0to40"?"selected":"")+'>0°–40° (incluidos)</option><option value="gt40" '+(v.dynamicAngleBand==="gt40"?"selected":"")+'>› 40° · flexión</option></select></label>'
                       : (key==="head_neck" && def.key==="lateral"
                           ? '<label>Intervalo angular · derecha (+) / izquierda (−)<select data-pmf-head-lateral-band><option value="">-- seleccionar --</option><option value="ltNeg10" '+(v.angleBand==="ltNeg10"?"selected":"")+'>‹ −10° · izquierda</option><option value="fromNeg10to10" '+(v.angleBand==="fromNeg10to10"?"selected":"")+'>−10° a 10° (incluidos)</option><option value="gt10" '+(v.angleBand==="gt10"?"selected":"")+'>› 10° · derecha</option></select></label>'
                           : (key==="head_neck" && def.key==="rotation"
@@ -1456,7 +1494,11 @@ function sectionStudyControls(key) {
           ? '<td><div class="pmf-cell-stack">'+angleControl+'</div></td>'+
             '<td><div class="pmf-cell-stack"><label>Tiempo ('+unitLabel+')<input type="number" min="0" step="0.1" data-pmf-manual-time="'+def.key+'" value="'+escapeHtml(v.time ?? "")+'"></label></div></td>'+
             (key==="head_neck"&&def.key==="flexion"
-              ? '<td><div class="pmf-cell-stack"><span class="pmf-result-empty">—</span></div></td>'
+              ? '<td><div class="pmf-cell-stack"><label>Frecuencia dinámica<select data-pmf-head-dynamic-frequency><option value="lt2" '+((v.dynamicFrequencyBand||"lt2")==="lt2"?"selected":"")+'>‹ 2 movimientos/minuto</option><option value="gte2" '+(v.dynamicFrequencyBand==="gte2"?"selected":"")+'>≥ 2 movimientos/minuto</option></select></label>'+
+                ((v.dynamicAngleBand==="lt0"||v.dynamicAngleBand==="gt40") && (v.dynamicFrequencyBand||"lt2")==="lt2"
+                  ? '<label>Tiempo en postura crítica<select data-pmf-head-dynamic-critical-time><option value="">-- seleccionar --</option><option value="lte60" '+(v.dynamicCriticalTimeBand==="lte60"?"selected":"")+'>≤ 60% del tiempo de la tarea</option><option value="gt60" '+(v.dynamicCriticalTimeBand==="gt60"?"selected":"")+'>› 60% del tiempo de la tarea</option></select></label>'
+                  : '')+
+                '</div></td>'
               : '<td><div class="pmf-cell-stack"><label>Frecuencia<select data-pmf-manual-frequency="'+def.key+'"><option value="lt2" '+((v.frequencyBand||"lt2")==="lt2"?"selected":"")+'>‹ 2 movimientos/minuto</option><option value="gte2" '+(v.frequencyBand==="gte2"?"selected":"")+'>≥ 2 movimientos/minuto</option></select></label></div></td>')
           : '<td colspan="3"><div class="pmf-kinovea-note">'+
               (key==="head_neck"&&def.key==="flexion"
@@ -1534,6 +1576,9 @@ function bindSectionStudyControls() {
         block.querySelector("[data-pmf-trunk-flexion-support]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.fullSupport=e.target.value==="true"?true:e.target.value==="false"?false:null;rerender();});
         block.querySelector("[data-pmf-head-static-band]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.staticAngleBand=e.target.value||null;if(e.target.value!=="gt25to85"){delete study.variables.flexion.staticExactAngle;delete study.variables.flexion.fullTrunkSupport;delete study.variables.flexion.trunkAlpha;}if(e.target.value!=="lt0")delete study.variables.flexion.fullHeadSupport;rerender();});
         block.querySelector("[data-pmf-head-static-exact]")?.addEventListener("change",e=>{const a=Number(e.target.value);study.variables.flexion=study.variables.flexion||{};study.variables.flexion.staticExactAngle=Number.isFinite(a)&&a>25&&a<=85?a:null;rerender();});
+        block.querySelector("[data-pmf-head-dynamic-flex-band]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.dynamicAngleBand=e.target.value||null;if(e.target.value==="from0to40")delete study.variables.flexion.dynamicCriticalTimeBand;rerender();});
+        block.querySelector("[data-pmf-head-dynamic-frequency]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.dynamicFrequencyBand=e.target.value==="gte2"?"gte2":"lt2";if(study.variables.flexion.dynamicFrequencyBand==="gte2")delete study.variables.flexion.dynamicCriticalTimeBand;rerender();});
+        block.querySelector("[data-pmf-head-dynamic-critical-time]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.dynamicCriticalTimeBand=e.target.value==="gt60"?"gt60":e.target.value==="lte60"?"lte60":null;rerender();});
         block.querySelector("[data-pmf-head-trunk-alpha]")?.addEventListener("change",e=>{const a=Number(e.target.value);study.variables.flexion=study.variables.flexion||{};study.variables.flexion.trunkAlpha=Number.isFinite(a)?a:null;rerender();});
         block.querySelector("[data-pmf-head-support]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.fullHeadSupport=e.target.value==="true"?true:e.target.value==="false"?false:null;rerender();});
         block.querySelector("[data-pmf-head-trunk-support]")?.addEventListener("change",e=>{study.variables.flexion=study.variables.flexion||{};study.variables.flexion.fullTrunkSupport=e.target.value==="true"?true:e.target.value==="false"?false:null;if(study.variables.flexion.fullTrunkSupport===true)delete study.variables.flexion.trunkAlpha;rerender();});
