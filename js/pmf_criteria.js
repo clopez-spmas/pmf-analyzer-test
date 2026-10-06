@@ -30,9 +30,13 @@ function pmfResult(status, reason, criterionId, inputs = {}) {
     return { status, reason, criterionId, inputs };
 }
 
+function pmfNumber(value) {
+    return value === null || value === undefined || value === "" ? NaN : Number(value);
+}
+
 function evaluateTrunkFlexionDynamic({ angle, frequencyPerMinute, fullTrunkSupport = null }) {
-    const a = Number(angle);
-    const f = Number(frequencyPerMinute);
+    const a = pmfNumber(angle);
+    const f = pmfNumber(frequencyPerMinute);
     if (!Number.isFinite(a) || !Number.isFinite(f)) {
         return pmfResult(PMF_RESULT.NOT_EVALUATED, "Faltan ángulo o frecuencia válidos.", "DYN_TRUNK_FLEX");
     }
@@ -75,8 +79,8 @@ function evaluateTrunkFlexionDynamic({ angle, frequencyPerMinute, fullTrunkSuppo
 }
 
 function evaluateSymmetricDynamic({ angle, frequencyPerMinute, criticalTimePercent, neutralMin, neutralMax, criterionId, label }) {
-    const a = Number(angle);
-    const f = Number(frequencyPerMinute);
+    const a = pmfNumber(angle);
+    const f = pmfNumber(frequencyPerMinute);
     const t = Number(criticalTimePercent);
 
     if (!Number.isFinite(a) || !Number.isFinite(f)) {
@@ -119,7 +123,7 @@ function evaluateHeadRotationDynamic(inputs) {
 }
 
 function evaluateHeadFlexionDynamic({ angle, frequencyPerMinute, criticalTimePercent }) {
-    const a=Number(angle), f=Number(frequencyPerMinute), t=Number(criticalTimePercent);
+    const a=pmfNumber(angle), f=pmfNumber(frequencyPerMinute), t=pmfNumber(criticalTimePercent);
     if(!Number.isFinite(a)||!Number.isFinite(f)) return pmfResult(PMF_RESULT.NOT_EVALUATED,"Faltan ángulo o frecuencia válidos.","DYN_HEAD_FLEX");
 
     // Convención del programa: flexión hacia delante positiva y extensión negativa.
@@ -140,7 +144,7 @@ function evaluateHeadFlexionDynamic({ angle, frequencyPerMinute, criticalTimePer
 }
 
 function evaluateTrunkStatic({ motion, angle, fullTrunkSupport = null, durationCriterionResult = null, lumbarConvex = null }) {
-    const originalAngle = Number(angle);
+    const originalAngle = pmfNumber(angle);
     const a = originalAngle > 90 ? 90 : originalAngle;
 
     if (motion === "lumbar_convex") {
@@ -180,7 +184,7 @@ function evaluateTrunkStatic({ motion, angle, fullTrunkSupport = null, durationC
 }
 
 function evaluateHeadStatic({ motion, angle, fullHeadSupport = null, fullTrunkSupport = null, neckFlexionAngle = null, durationCriterionResult = null }) {
-    const a=Number(angle);
+    const a=pmfNumber(angle);
     if(!Number.isFinite(a)) return pmfResult(PMF_RESULT.NOT_EVALUATED,"Falta ángulo válido.","STAT_HEAD");
 
     if(motion==="lateral") return pmfResult(a<-10||a>10?PMF_RESULT.NOT_ACCEPTABLE:PMF_RESULT.ACCEPTABLE,a<-10||a>10?"Lateralización estática fuera de -10° a 10°.":"Lateralización estática entre -10° y 10°.","STAT_HEAD_LATERAL",{angle:a});
@@ -202,7 +206,7 @@ function evaluateHeadStatic({ motion, angle, fullHeadSupport = null, fullTrunkSu
                 }
                 return pmfResult(PMF_RESULT.NEEDS_CONFIRMATION,"Con soporte completo del tronco: falta aplicar la duración máxima aceptable de la Figura 5.16 y la Tabla 5.12.","STAT_HEAD_FLEX_25_85_DURATION",{angle:a,fullTrunkSupport});
             }
-            const n=Number(neckFlexionAngle);
+            const n=pmfNumber(neckFlexionAngle);
             if(!Number.isFinite(n)) return pmfResult(PMF_RESULT.NEEDS_CONFIRMATION,"Sin soporte completo del tronco: debe determinarse la flexo-extensión de cuello (β−α).","STAT_NECK_FLEX_REQUIRED",{angle:a,fullTrunkSupport});
             return pmfResult(n>=0&&n<=25?PMF_RESULT.ACCEPTABLE:PMF_RESULT.NOT_ACCEPTABLE,n>=0&&n<=25?"Flexo-extensión de cuello (β−α) entre 0° y 25°.":"Flexo-extensión de cuello (β−α) fuera de 0° a 25°.","STAT_NECK_FLEX",{angle:a,neckFlexionAngle:n,fullTrunkSupport});
         }
@@ -218,11 +222,11 @@ function evaluateHeadStatic({ motion, angle, fullHeadSupport = null, fullTrunkSu
 
 
 function evaluateKneeDynamic({ posture, internalAngle, standingFlexion, seatedExcursion, frequencyPerMinute }) {
-    const f=Number(frequencyPerMinute);
+    const f=pmfNumber(frequencyPerMinute);
     if(!Number.isFinite(f)) return pmfResult(PMF_RESULT.NOT_EVALUATED,"Falta frecuencia válida.","DYN_KNEE");
 
     if(posture==="standing"){
-        const flex=Number(standingFlexion);
+        const flex=pmfNumber(standingFlexion);
         if(!Number.isFinite(flex)) return pmfResult(PMF_RESULT.NOT_EVALUATED,"Falta flexión de rodilla válida.","DYN_KNEE_STANDING");
         if(flex < 135){
             return pmfResult(PMF_RESULT.ACCEPTABLE,"Flexión de rodilla de pie inferior a 135°.","DYN_KNEE_STANDING_LT135",{standingFlexion:flex,frequencyPerMinute:f});
@@ -238,8 +242,8 @@ function evaluateKneeDynamic({ posture, internalAngle, standingFlexion, seatedEx
     }
 
     if(posture==="seated"){
-        const excursion=Number(seatedExcursion);
-        const internal=Number(internalAngle);
+        const excursion=pmfNumber(seatedExcursion);
+        const internal=pmfNumber(internalAngle);
         if(!Number.isFinite(excursion) || !Number.isFinite(internal)) return pmfResult(PMF_RESULT.NOT_EVALUATED,"Falta ángulo de rodilla sentado válido.","DYN_KNEE_SEATED");
         if(excursion < 40){
             return pmfResult(PMF_RESULT.ACCEPTABLE,"Excursión de rodilla sentado inferior a 40° respecto a 90°.","DYN_KNEE_SEATED_LT40",{internalAngle:internal,seatedExcursion:excursion,frequencyPerMinute:f});
@@ -258,10 +262,10 @@ function evaluateKneeDynamic({ posture, internalAngle, standingFlexion, seatedEx
 }
 
 function evaluateKneeStatic({ posture, internalAngle, standingFlexion, ischialSupport = null, trunkPosteriorInclined = null }) {
-    const internal=Number(internalAngle);
+    const internal=pmfNumber(internalAngle);
 
     if(posture==="standing"){
-        const flex=Number(standingFlexion);
+        const flex=pmfNumber(standingFlexion);
         if(!Number.isFinite(flex)) return pmfResult(PMF_RESULT.NOT_EVALUATED,"Falta flexión de rodilla válida.","STAT_KNEE_STANDING");
         if(flex<=0){
             return pmfResult(PMF_RESULT.ACCEPTABLE,"Rodilla de pie en extensión completa (180°).","STAT_KNEE_STANDING_180",{standingFlexion:flex,ischialSupport});
@@ -306,7 +310,7 @@ function evaluateKneeStatic({ posture, internalAngle, standingFlexion, ischialSu
 }
 
 function evaluateAnkleDynamic({ dorsiPlantarAngle, frequencyPerMinute }) {
-    const a=Number(dorsiPlantarAngle), f=Number(frequencyPerMinute);
+    const a=pmfNumber(dorsiPlantarAngle), f=pmfNumber(frequencyPerMinute);
     if(!Number.isFinite(a)||!Number.isFinite(f)) return pmfResult(PMF_RESULT.NOT_EVALUATED,"Faltan ángulo de tobillo o frecuencia válidos.","DYN_ANKLE");
 
     const dorsiflexion=Math.max(0,a);
@@ -327,7 +331,7 @@ function evaluateAnkleDynamic({ dorsiPlantarAngle, frequencyPerMinute }) {
 }
 
 function evaluateAnkleStatic({ dorsiPlantarAngle }) {
-    const a=Number(dorsiPlantarAngle);
+    const a=pmfNumber(dorsiPlantarAngle);
     if(!Number.isFinite(a)) return pmfResult(PMF_RESULT.NOT_EVALUATED,"Falta ángulo de tobillo válido.","STAT_ANKLE");
     const dorsiflexion=Math.max(0,a);
     const plantarFlexion=Math.max(0,-a);
