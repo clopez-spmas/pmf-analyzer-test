@@ -67,7 +67,8 @@ function bindProjectActions() {
         if (typeof goToPMFPage === "function") goToPMFPage("word_tables");
     });
     document.getElementById("instructionsBtn")?.addEventListener("click", () => {
-        window.open("documentacion/Instrucciones_Uso_Programa_Posturas_Forzadas.pdf", "_blank", "noopener");
+        const pdfUrl = "documentacion/Instrucciones_Uso_Programa_Posturas_Forzadas.pdf?v=" + Date.now();
+        window.open(pdfUrl, "_blank", "noopener");
     });
 
     document.getElementById("loadProjectInput")?.addEventListener("change", async event => {
