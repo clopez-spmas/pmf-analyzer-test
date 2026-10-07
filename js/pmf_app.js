@@ -1815,6 +1815,91 @@ function renderAnalysisResults() {
     });
     bindManualControls();
     bindSectionStudyControls();
+    renderSegmentResultsSummary();
+}
+
+function segmentModeSummary(sectionKey, mode) {
+    const results=(pmfProject.analysis?.bodySections?.[sectionKey]?.results||[]).filter(r=>r.mode===mode);
+    const R=PMFCriteria.RESULT;
+    if(!results.length) return {status:R.NOT_EVALUATED,text:"NO EVALUADO",reasons:[]};
+
+    const nonAcceptable=results.filter(r=>r.status===R.NOT_ACCEPTABLE);
+    if(nonAcceptable.length){
+        const reasons=[...new Set(nonAcceptable.map(r=>r.reason).filter(Boolean))];
+        return {status:R.NOT_ACCEPTABLE,text:"NO ACEPTABLE",reasons};
+    }
+
+    const pending=results.filter(r=>r.status===R.NEEDS_CONFIRMATION);
+    if(pending.length){
+        const reasons=[...new Set(pending.map(r=>r.reason).filter(Boolean))];
+        return {status:R.NEEDS_CONFIRMATION,text:"REQUIERE CONFIRMACIÓN",reasons};
+    }
+
+    const acceptable=results.some(r=>r.status===R.ACCEPTABLE);
+    if(acceptable) return {status:R.ACCEPTABLE,text:"ACEPTABLE",reasons:[]};
+
+    return {status:R.NOT_EVALUATED,text:"NO EVALUADO",reasons:[]};
+}
+
+function segmentSummaryCell(summary, forWord=false) {
+    const R=PMFCriteria.RESULT;
+    const cls=summary.status===R.ACCEPTABLE
+        ? "pmf-summary-acceptable"
+        : summary.status===R.NOT_ACCEPTABLE
+            ? "pmf-summary-not-acceptable"
+            : summary.status===R.NEEDS_CONFIRMATION
+                ? "pmf-summary-pending"
+                : "pmf-summary-not-evaluated";
+    const body='<strong>'+escapeHtml(summary.text)+'</strong>'+
+        (summary.status===R.NOT_ACCEPTABLE && summary.reasons.length
+            ? '<div class="pmf-summary-reasons">'+summary.reasons.map(escapeHtml).join('<br>')+'</div>'
+            : summary.status===R.NEEDS_CONFIRMATION && summary.reasons.length
+                ? '<div class="pmf-summary-reasons">'+summary.reasons.map(escapeHtml).join('<br>')+'</div>'
+                : '');
+    if(!forWord) return '<td class="'+cls+'">'+body+'</td>';
+
+    let style="border:1px solid #9ca3af;padding:7px;vertical-align:top;";
+    if(summary.status===R.ACCEPTABLE) style+="background:#c6efce;color:#006100;";
+    else if(summary.status===R.NOT_ACCEPTABLE) style+="background:#ffc7ce;color:#9c0006;";
+    else if(summary.status===R.NEEDS_CONFIRMATION) style+="background:#ffeb9c;color:#9c6500;";
+    else style+="background:#f3f4f6;color:#475569;";
+    return '<td style="'+style+'">'+body+'</td>';
+}
+
+function segmentSummaryRows(forWord=false) {
+    const sections=[
+        ["trunk","Tronco"],
+        ["head_neck","Cabeza / cuello"],
+        ["lower_right","Extremidad inferior derecha"],
+        ["lower_left","Extremidad inferior izquierda"]
+    ];
+    return sections.map(([key,label])=>{
+        const stat=segmentModeSummary(key,"static");
+        const dyn=segmentModeSummary(key,"dynamic");
+        const first=forWord
+            ? '<td style="border:1px solid #9ca3af;padding:7px;font-weight:700;background:#fff;">'+escapeHtml(label)+'</td>'
+            : '<td><strong>'+escapeHtml(label)+'</strong></td>';
+        return '<tr>'+first+segmentSummaryCell(stat,forWord)+segmentSummaryCell(dyn,forWord)+'</tr>';
+    }).join("");
+}
+
+function renderSegmentResultsSummary() {
+    const container=document.getElementById("segmentResultsSummary");
+    if(!container || !pmfProject) return;
+    container.innerHTML='<div class="result-table-wrap"><table class="compact-table pmf-segment-summary-table">'+
+        '<thead><tr><th>Segmento corporal</th><th>Estática</th><th>Dinámica</th></tr></thead>'+
+        '<tbody>'+segmentSummaryRows(false)+'</tbody></table></div>';
+}
+
+function wordSegmentSummaryTable() {
+    return '<section class="pmf-word-block"><div class="pmf-word-heading"><h3>Resumen de resultados por segmento corporal</h3>'+
+        '<button type="button" class="toolbar-btn pmf-copy-word-table">Copiar tabla</button></div>'+
+        '<div class="pmf-word-copy-target"><table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:10pt;">'+
+        '<thead><tr>'+
+        '<th style="border:1px solid #9ca3af;padding:7px;background:#dbeafe;text-align:left;">Segmento corporal</th>'+
+        '<th style="border:1px solid #9ca3af;padding:7px;background:#dbeafe;text-align:left;">Estática</th>'+
+        '<th style="border:1px solid #9ca3af;padding:7px;background:#dbeafe;text-align:left;">Dinámica</th>'+
+        '</tr></thead><tbody>'+segmentSummaryRows(true)+'</tbody></table></div></section>';
 }
 
 
@@ -1954,6 +2039,7 @@ function renderWordTables() {
     const container=document.getElementById("wordTablesContent");
     if(!container || !pmfProject) return;
     container.innerHTML=
+        wordSegmentSummaryTable()+
         wordSectionTable("trunk","Tronco")+
         wordSectionTable("head_neck","Cabeza / cuello")+
         wordSectionTable("lower_right","Extremidad inferior derecha")+
