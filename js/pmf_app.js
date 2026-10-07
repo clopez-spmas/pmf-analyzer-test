@@ -67,7 +67,7 @@ function bindProjectActions() {
         if (typeof goToPMFPage === "function") goToPMFPage("word_tables");
     });
     document.getElementById("instructionsBtn")?.addEventListener("click", () => {
-        const pdfUrl = "documentacion/Instrucciones_Uso_Programa_Posturas_Forzadas.pdf?v=" + Date.now();
+        const pdfUrl = "https://raw.githubusercontent.com/clopez-spmas/pmf-analyzer-test/main/documentacion/Instrucciones_Uso_Programa_Posturas_Forzadas.pdf?v=" + Date.now();
         window.open(pdfUrl, "_blank", "noopener");
     });
 
