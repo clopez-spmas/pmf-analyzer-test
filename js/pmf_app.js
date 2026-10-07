@@ -1145,8 +1145,17 @@ function movementSource(key, variableKey) {
     return study.variables?.[variableKey]?.source === "manual" ? "manual" : "kinovea";
 }
 
+function canonicalMeasurementForResult(section, measurement) {
+    const label=String(measurement||"");
+    if(section==="trunk" && (/^Flexión \/ extensión/.test(label) || /^Flexión ·/.test(label))) {
+        return "Flexión / extensión";
+    }
+    return label;
+}
+
 function movementKeyForResult(section, measurement) {
-    const def = (PMF_SECTION_MANUAL_DEFS[section] || []).find(item => item.label === measurement);
+    const canonical=canonicalMeasurementForResult(section,measurement);
+    const def = (PMF_SECTION_MANUAL_DEFS[section] || []).find(item => item.label === canonical);
     return def?.key || null;
 }
 
@@ -1760,16 +1769,37 @@ function renderAnalysisResults() {
     };
 
     function resultMetrics(r) {
-        const f = Number(r?.calculated?.frequencyPerMinute);
-        const cp = Number(r?.calculated?.criticalPercent);
-        const staticSec = Number(r?.calculated?.totalStaticSeconds);
-        const angle = Number(r?.calculated?.extremeAngle);
+        const inputs=r?.traceability?.criterion?.inputs || r?.traceability?.inputs || {};
+        const calc=r?.calculated || {};
+        const firstFinite=(...values)=>{
+            for(const value of values){
+                if(value===null || value===undefined || value==="") continue;
+                const n=Number(value);
+                if(Number.isFinite(n)) return n;
+            }
+            return null;
+        };
+
+        const angle=firstFinite(
+            inputs.angle,
+            inputs.dorsiPlantarAngle,
+            inputs.internalAngle,
+            calc.extremeAngle,
+            calc.evaluationAngle,
+            calc.durationCriterionAngle,
+            calc.worstEpisode?.averageAngle
+        );
+        const f=firstFinite(inputs.frequencyPerMinute,calc.frequencyPerMinute);
+        const cp=firstFinite(inputs.criticalTimePercent,calc.criticalPercent);
+        const staticSec=firstFinite(calc.totalStaticSeconds,calc.worstEpisode?.duration);
+        const maxSec=firstFinite(calc.maxAcceptableStaticSeconds);
+
         return [
-            Number.isFinite(angle) ? 'Ángulo: ' + angle.toFixed(1) + '°' : null,
-            Number.isFinite(f) ? 'Frecuencia: ' + f.toFixed(2) + ' mov/min' : null,
-            Number.isFinite(cp) ? 'Tiempo crítico: ' + cp.toFixed(1) + '%' : null,
-            Number.isFinite(staticSec) ? 'Tiempo estático: ' + staticSec.toFixed(2) + ' s' : null,
-            Number.isFinite(Number(r?.calculated?.maxAcceptableStaticSeconds)) ? 'Máximo aceptable: ' + Number(r.calculated.maxAcceptableStaticSeconds).toFixed(1) + ' s' : null
+            angle!==null ? 'Ángulo: ' + angle.toFixed(1) + '°' : null,
+            f!==null ? 'Frecuencia: ' + f.toFixed(2) + ' mov/min' : null,
+            cp!==null ? 'Tiempo crítico: ' + cp.toFixed(1) + '%' : null,
+            staticSec!==null ? 'Tiempo estático: ' + staticSec.toFixed(2) + ' s' : null,
+            maxSec!==null ? 'Máximo aceptable: ' + maxSec.toFixed(1) + ' s' : null
         ].filter(Boolean).join(' · ');
     }
 
@@ -2060,10 +2090,7 @@ function wordSimulationTable() {
         const showSection=sectionLabel!==lastSection;
         lastSection=sectionLabel;
 
-        const currentSource=(sections[item.section]?.results||[]).find(r =>
-            r.measurement===item.measurement && r.mode===item.mode && r.status===item.currentStatus
-        );
-        const currentReason=currentSource?.reason||"";
+        const currentReason=item.currentReason||"";
 
         return '<tr>'+
             '<td style="border:1px solid #9ca3af;padding:6px;'+(showSection?'font-weight:700;background:#eaf2fb;':'background:#fff;')+'">'+(showSection?escapeHtml(sectionLabel):'')+'</td>'+
@@ -2162,6 +2189,7 @@ function worstSimulationSource(results) {
 }
 
 function simFinite(value, fallback=null) {
+    if(value===null || value===undefined || value==="") return fallback;
     const n=Number(value);
     return Number.isFinite(n)?n:fallback;
 }
@@ -2388,13 +2416,21 @@ function renderSimulation() {
         const by=new Map();
         (data?.results||[]).forEach(r=>{
             if(!r?.measurement || !["static","dynamic"].includes(r.mode)) return;
-            const k=simulationKey(section,r.measurement,r.mode);
+            const measurement=canonicalMeasurementForResult(section,r.measurement);
+            const k=simulationKey(section,measurement,r.mode);
             if(!by.has(k))by.set(k,[]);
             by.get(k).push(r);
         });
         by.forEach((results,key)=>{
             const current=worstSimulationSource(results);
-            if(current && current.status===PMFCriteria.RESULT.NOT_ACCEPTABLE) groups.push({section,key,current});
+            if(current && current.status===PMFCriteria.RESULT.NOT_ACCEPTABLE){
+                groups.push({
+                    section,
+                    key,
+                    measurement:canonicalMeasurementForResult(section,current.measurement),
+                    current
+                });
+            }
         });
     });
     if(!groups.length){
@@ -2402,19 +2438,20 @@ function renderSimulation() {
         return;
     }
 
-    const cards=groups.map(({section,key,current})=>{
-        const base=currentSimulationValues(section,current.measurement,current.mode,current);
+    const cards=groups.map(({section,key,measurement,current})=>{
+        const base=currentSimulationValues(section,measurement,current.mode,current);
         const override=store.overrides[key]||{};
         const values={...base,...override};
-        const simulated=evaluateSimulation(section,current.measurement,current.mode,values);
+        const simulated=evaluateSimulation(section,measurement,current.mode,values);
         store.results[key]={
-            section,measurement:current.measurement,mode:current.mode,
-            currentStatus:current.status,simulatedStatus:simulated.status,
+            section,measurement,mode:current.mode,
+            currentStatus:current.status,currentReason:current.reason||"",
+            simulatedStatus:simulated.status,
             reason:simulated.reason,values:PMFStorage.deepClone(values)
         };
         const sectionLabel=sections[section]?.label||section;
         return '<article class="pmf-sim-card" data-sim-key="'+escapeHtml(key)+'">'+
-            '<div class="pmf-sim-head"><div><strong>'+escapeHtml(sectionLabel)+'</strong><h3>'+escapeHtml(current.measurement)+' · '+(current.mode==="static"?"Estática":"Dinámica")+'</h3></div>'+
+            '<div class="pmf-sim-head"><div><strong>'+escapeHtml(sectionLabel)+'</strong><h3>'+escapeHtml(measurement)+' · '+(current.mode==="static"?"Estática":"Dinámica")+'</h3></div>'+
             '<div class="pmf-sim-compare"><div><span>Actual</span><strong>'+escapeHtml(current.status)+'</strong></div><span class="pmf-sim-arrow">→</span><div><span>Simulado</span><strong>'+escapeHtml(simulated.status)+'</strong></div></div></div>'+
             '<div class="pmf-sim-reason">'+escapeHtml(simulated.reason||"")+'</div>'+
             '<div class="pmf-sim-controls">'+simulationControls(section,current.measurement,current.mode,values)+'</div>'+
@@ -2423,13 +2460,13 @@ function renderSimulation() {
     }).join("");
 
     const changes=[];
-    groups.forEach(({section,key,current})=>{
-        const base=currentSimulationValues(section,current.measurement,current.mode,current);
+    groups.forEach(({section,key,measurement,current})=>{
+        const base=currentSimulationValues(section,measurement,current.mode,current);
         const override=store.overrides[key]||{};
         Object.keys(override).forEach(field=>{
             const before=base[field],after=override[field];
             if(String(before)!==String(after)){
-                changes.push('<li><strong>'+escapeHtml((sections[section]?.label||section)+' · '+current.measurement+' · '+(current.mode==="static"?"Estática":"Dinámica"))+'</strong>: '+escapeHtml(simulationFieldLabel(field))+' · '+escapeHtml(simulationValueText(field,before))+' → <strong>'+escapeHtml(simulationValueText(field,after))+'</strong></li>');
+                changes.push('<li><strong>'+escapeHtml((sections[section]?.label||section)+' · '+measurement+' · '+(current.mode==="static"?"Estática":"Dinámica"))+'</strong>: '+escapeHtml(simulationFieldLabel(field))+' · '+escapeHtml(simulationValueText(field,before))+' → <strong>'+escapeHtml(simulationValueText(field,after))+'</strong></li>');
             }
         });
     });
