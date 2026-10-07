@@ -2172,6 +2172,7 @@ function ensureSimulationStore() {
         : {};
     current.overrides = current.overrides && typeof current.overrides === "object" ? current.overrides : {};
     current.results = current.results && typeof current.results === "object" ? current.results : {};
+    current.sourceSignatures = current.sourceSignatures && typeof current.sourceSignatures === "object" ? current.sourceSignatures : {};
     current.updatedAt = current.updatedAt || null;
     pmfProject.analysis.simulation = current;
     return current;
@@ -2407,6 +2408,33 @@ function simulationValueText(field,value) {
     return String(value);
 }
 
+function simulationSourceSignature(section, measurement, mode, result) {
+    const inputs=result?.traceability?.criterion?.inputs || result?.traceability?.inputs || {};
+    const calc=result?.calculated || {};
+    return JSON.stringify({
+        section,
+        measurement,
+        mode,
+        status:result?.status||null,
+        criterionId:result?.criterionId||null,
+        reason:result?.reason||null,
+        inputs,
+        calculated:{
+            extremeAngle:calc.extremeAngle??null,
+            evaluationAngle:calc.evaluationAngle??null,
+            frequencyPerMinute:calc.frequencyPerMinute??null,
+            criticalPercent:calc.criticalPercent??null,
+            totalStaticSeconds:calc.totalStaticSeconds??null,
+            maxAcceptableStaticSeconds:calc.maxAcceptableStaticSeconds??null,
+            durationCriterionAngle:calc.durationCriterionAngle??null,
+            worstEpisode:calc.worstEpisode ? {
+                averageAngle:calc.worstEpisode.averageAngle??null,
+                duration:calc.worstEpisode.duration??null
+            } : null
+        }
+    });
+}
+
 function renderSimulation() {
     const container=document.getElementById("simulationContent");
     if(!container || !pmfProject) return;
@@ -2441,6 +2469,13 @@ function renderSimulation() {
     }
 
     const cards=groups.map(({section,key,measurement,current})=>{
+        const sourceSignature=simulationSourceSignature(section,measurement,current.mode,current);
+        if(store.sourceSignatures[key]!==sourceSignature){
+            delete store.overrides[key];
+            delete store.results[key];
+            store.sourceSignatures[key]=sourceSignature;
+        }
+
         const base=currentSimulationValues(section,measurement,current.mode,current);
         const override=store.overrides[key]||{};
         const values={...base,...override};
@@ -2456,7 +2491,7 @@ function renderSimulation() {
             '<div class="pmf-sim-head"><div><strong>'+escapeHtml(sectionLabel)+'</strong><h3>'+escapeHtml(measurement)+' · '+(current.mode==="static"?"Estática":"Dinámica")+'</h3></div>'+
             '<div class="pmf-sim-compare"><div><span>Actual</span><strong>'+escapeHtml(current.status)+'</strong></div><span class="pmf-sim-arrow">→</span><div><span>Simulado</span><strong>'+escapeHtml(simulated.status)+'</strong></div></div></div>'+
             '<div class="pmf-sim-reason">'+escapeHtml(simulated.reason||"")+'</div>'+
-            '<div class="pmf-sim-controls">'+simulationControls(section,current.measurement,current.mode,values)+'</div>'+
+            '<div class="pmf-sim-controls">'+simulationControls(section,measurement,current.mode,values)+'</div>'+
             '<button type="button" class="nav-secondary pmf-sim-reset" data-sim-reset>Restablecer esta simulación</button>'+
         '</article>';
     }).join("");
