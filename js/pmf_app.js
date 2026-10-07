@@ -2027,22 +2027,45 @@ function wordSectionTable(sectionKey, title) {
         '</tr></thead><tbody>'+rows+'</tbody></table></div></section>';
 }
 
+function wordSimulationStatusCell(status, reason) {
+    const R=PMFCriteria.RESULT;
+    const style=wordStatusCellStyle(status);
+    if(status===R.ACCEPTABLE){
+        return '<td style="border:1px solid #9ca3af;padding:6px;vertical-align:top;'+style+'"><strong>ACEPTABLE</strong></td>';
+    }
+    if(status===R.NOT_ACCEPTABLE){
+        return '<td style="border:1px solid #9ca3af;padding:6px;vertical-align:top;'+style+'"><strong>NO ACEPTABLE</strong>'+
+            (reason?'<div style="margin-top:4px;">'+escapeHtml(reason)+'</div>':'')+'</td>';
+    }
+    if(status===R.NEEDS_CONFIRMATION){
+        return '<td style="border:1px solid #9ca3af;padding:6px;vertical-align:top;'+style+'"><strong>REQUIERE CONFIRMACIÓN</strong>'+
+            (reason?'<div style="margin-top:4px;">'+escapeHtml(reason)+'</div>':'')+'</td>';
+    }
+    return '<td style="border:1px solid #9ca3af;padding:6px;vertical-align:top;'+style+'"><strong>NO EVALUADO</strong></td>';
+}
+
 function wordSimulationTable() {
     const sections=pmfProject.analysis?.bodySections||{};
     const store=ensureSimulationStore();
     const entries=Object.entries(store.results||{});
+    let lastSection=null;
     const rows=entries.map(([key,item])=>{
         const sectionLabel=sections[item.section]?.label||item.section;
         const mode=item.mode==="static"?"Estática":"Dinámica";
-        const currentStyle=wordStatusCellStyle(item.currentStatus);
-        const simulatedStyle=wordStatusCellStyle(item.simulatedStatus);
+        const showSection=sectionLabel!==lastSection;
+        lastSection=sectionLabel;
+
+        const currentSource=(sections[item.section]?.results||[]).find(r =>
+            r.measurement===item.measurement && r.mode===item.mode && r.status===item.currentStatus
+        );
+        const currentReason=currentSource?.reason||"";
+
         return '<tr>'+
-            '<td style="border:1px solid #9ca3af;padding:6px;background:#fff;">'+escapeHtml(sectionLabel)+'</td>'+
-            '<td style="border:1px solid #9ca3af;padding:6px;background:#fff;">'+escapeHtml(item.measurement||"")+'</td>'+
+            '<td style="border:1px solid #9ca3af;padding:6px;'+(showSection?'font-weight:700;background:#eaf2fb;':'background:#fff;')+'">'+(showSection?escapeHtml(sectionLabel):'')+'</td>'+
+            '<td style="border:1px solid #9ca3af;padding:6px 6px 6px 22px;background:#fff;">↳ '+escapeHtml(item.measurement||"")+'</td>'+
             '<td style="border:1px solid #9ca3af;padding:6px;background:#fff;">'+mode+'</td>'+
-            '<td style="border:1px solid #9ca3af;padding:6px;'+currentStyle+'"><strong>'+escapeHtml(item.currentStatus||"—")+'</strong></td>'+
-            '<td style="border:1px solid #9ca3af;padding:6px;'+simulatedStyle+'"><strong>'+escapeHtml(item.simulatedStatus||"—")+'</strong>'+
-                (item.reason?'<div>'+escapeHtml(item.reason)+'</div>':'')+'</td>'+
+            wordSimulationStatusCell(item.currentStatus,currentReason)+
+            wordSimulationStatusCell(item.simulatedStatus,item.reason||"")+
         '</tr>';
     }).join('');
     const body=rows || '<tr><td colspan="5" style="border:1px solid #9ca3af;padding:6px;background:#fff;">Todavía no hay resultados de simulación.</td></tr>';
@@ -2051,7 +2074,7 @@ function wordSimulationTable() {
         '<div class="pmf-word-copy-target"><table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:10pt;">'+
         '<thead><tr>'+
         '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Segmento corporal</th>'+
-        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Movimiento</th>'+
+        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Postura / movimiento</th>'+
         '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Tipo</th>'+
         '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Resultado actual</th>'+
         '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Resultado simulado</th>'+
