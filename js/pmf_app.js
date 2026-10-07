@@ -1877,18 +1877,62 @@ function summarizeResultSet(results) {
     return {status:R.NOT_EVALUATED,text:"NO EVALUADO",reasons:[]};
 }
 
-function segmentModeSummary(sectionKey, mode) {
-    const results=(pmfProject.analysis?.bodySections?.[sectionKey]?.results||[]).filter(r=>r.mode===mode);
+function simulatedResultForWord(sectionKey, measurement, mode) {
+    const store=ensureSimulationStore();
+    const canonical=canonicalMeasurementForResult(sectionKey,measurement);
+    const key=simulationKey(sectionKey,canonical,mode);
+    const override=store.overrides?.[key];
+    const simulated=store.results?.[key];
+
+    if(!override || !Object.keys(override).length || !simulated) return null;
+
+    return {
+        status:simulated.simulatedStatus,
+        reason:simulated.reason||"",
+        measurement:canonical,
+        mode
+    };
+}
+
+function wordEffectiveResults(sectionKey, mode, measurement=null) {
+    const original=(pmfProject.analysis?.bodySections?.[sectionKey]?.results||[]).filter(r=>{
+        if(r.mode!==mode) return false;
+        if(measurement===null) return true;
+        return canonicalMeasurementForResult(sectionKey,r.measurement)===canonicalMeasurementForResult(sectionKey,measurement);
+    });
+
+    const byMovement=new Map();
+    original.forEach(r=>{
+        const canonical=canonicalMeasurementForResult(sectionKey,r.measurement);
+        if(!byMovement.has(canonical)) byMovement.set(canonical,[]);
+        byMovement.get(canonical).push(r);
+    });
+
+    const effective=[];
+    byMovement.forEach((rows,canonical)=>{
+        const simulated=simulatedResultForWord(sectionKey,canonical,mode);
+        if(simulated) effective.push(simulated);
+        else effective.push(...rows);
+    });
+    return effective;
+}
+
+function segmentModeSummary(sectionKey, mode, forWord=false) {
+    const results=forWord
+        ? wordEffectiveResults(sectionKey,mode)
+        : (pmfProject.analysis?.bodySections?.[sectionKey]?.results||[]).filter(r=>r.mode===mode);
     return summarizeResultSet(results);
 }
 
-function movementModeSummary(sectionKey, label, mode) {
-    const results=(pmfProject.analysis?.bodySections?.[sectionKey]?.results||[]).filter(r=>{
-        if(r.mode!==mode) return false;
-        if(r.measurement===label) return true;
-        if(sectionKey==="trunk" && label==="Flexión / extensión" && /^Flexión/.test(r.measurement||"")) return true;
-        return false;
-    });
+function movementModeSummary(sectionKey, label, mode, forWord=false) {
+    const results=forWord
+        ? wordEffectiveResults(sectionKey,mode,label)
+        : (pmfProject.analysis?.bodySections?.[sectionKey]?.results||[]).filter(r=>{
+            if(r.mode!==mode) return false;
+            if(r.measurement===label) return true;
+            if(sectionKey==="trunk" && label==="Flexión / extensión" && /^Flexión/.test(r.measurement||"")) return true;
+            return false;
+        });
     return summarizeResultSet(results);
 }
 
@@ -1926,8 +1970,8 @@ function segmentSummaryRows(forWord=false) {
     ];
 
     return sections.map(([key,label,movements])=>{
-        const stat=segmentModeSummary(key,"static");
-        const dyn=segmentModeSummary(key,"dynamic");
+        const stat=segmentModeSummary(key,"static",forWord);
+        const dyn=segmentModeSummary(key,"dynamic",forWord);
         const first=forWord
             ? '<td style="border:1px solid #9ca3af;padding:7px;font-weight:700;background:#eaf2fb;">'+escapeHtml(label)+'</td>'
             : '<td class="pmf-summary-segment"><strong>'+escapeHtml(label)+'</strong></td>';
@@ -1938,8 +1982,8 @@ function segmentSummaryRows(forWord=false) {
         );
 
         const detailRows=visibleMovements.map(movement=>{
-            const mStat=movementModeSummary(key,movement,"static");
-            const mDyn=movementModeSummary(key,movement,"dynamic");
+            const mStat=movementModeSummary(key,movement,"static",forWord);
+            const mDyn=movementModeSummary(key,movement,"dynamic",forWord);
             const movementCell=forWord
                 ? '<td style="border:1px solid #9ca3af;padding:7px 7px 7px 22px;background:#fff;">↳ '+escapeHtml(movement)+'</td>'
                 : '<td class="pmf-summary-movement">↳ '+escapeHtml(movement)+'</td>';
@@ -2003,8 +2047,12 @@ function wordResultMetrics(r) {
     return parts.join(" · ");
 }
 
-function wordResultCell(items, mode) {
-    const rows=(items||[]).filter(r=>r.mode===mode);
+function wordResultCell(items, mode, sectionKey=null, measurement=null) {
+    let rows=(items||[]).filter(r=>r.mode===mode);
+    if(sectionKey && measurement){
+        const simulated=simulatedResultForWord(sectionKey,measurement,mode);
+        if(simulated) rows=[simulated];
+    }
     if(!rows.length) return '<td style="border:1px solid #9ca3af;padding:6px;background:#fff;">—</td>';
 
     const R=PMFCriteria.RESULT;
@@ -2050,7 +2098,7 @@ function wordSectionTable(sectionKey, title) {
             return false;
         });
         return '<tr><td style="border:1px solid #9ca3af;padding:6px 6px 6px 22px;background:#fff;">↳ '+escapeHtml(label)+'</td>'+
-            wordResultCell(matching,"static")+wordResultCell(matching,"dynamic")+'</tr>';
+            wordResultCell(matching,"static",sectionKey,label)+wordResultCell(matching,"dynamic",sectionKey,label)+'</tr>';
     }).join('');
     return '<section class="pmf-word-block"><div class="pmf-word-heading"><h3>'+escapeHtml(title)+'</h3>'+
         '<button type="button" class="toolbar-btn pmf-copy-word-table">Copiar tabla</button></div>'+
