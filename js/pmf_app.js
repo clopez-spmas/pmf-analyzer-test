@@ -1783,10 +1783,12 @@ function renderAnalysisResults() {
         const angle=firstFinite(
             inputs.angle,
             inputs.dorsiPlantarAngle,
-            inputs.internalAngle,
+            inputs.standingFlexion,
+            inputs.seatedExcursion,
             calc.extremeAngle,
             calc.evaluationAngle,
             calc.durationCriterionAngle,
+            inputs.internalAngle,
             calc.worstEpisode?.averageAngle
         );
         const f=firstFinite(inputs.frequencyPerMinute,calc.frequencyPerMinute);
