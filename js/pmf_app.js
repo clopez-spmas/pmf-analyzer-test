@@ -1969,15 +1969,29 @@ function wordResultMetrics(r) {
 function wordResultCell(items, mode) {
     const rows=(items||[]).filter(r=>r.mode===mode);
     if(!rows.length) return '<td style="border:1px solid #9ca3af;padding:6px;background:#fff;">—</td>';
+
+    const R=PMFCriteria.RESULT;
     const status=wordWorstStatus(rows);
-    const content=rows.map(r=>{
-        const metrics=wordResultMetrics(r);
-        return '<div style="margin:0 0 6px 0;"><strong>'+escapeHtml(r.status)+'</strong>'+
-            (r.reason?'<div>'+escapeHtml(r.reason)+'</div>':'')+
-            (metrics?'<div style="font-size:9pt;">'+escapeHtml(metrics)+'</div>':'')+
-            '</div>';
-    }).join('');
-    return '<td style="border:1px solid #9ca3af;padding:6px;vertical-align:top;'+wordStatusCellStyle(status)+'">'+content+'</td>';
+
+    if(status===R.ACCEPTABLE){
+        return '<td style="border:1px solid #9ca3af;padding:6px;vertical-align:top;'+wordStatusCellStyle(status)+'"><strong>ACEPTABLE</strong></td>';
+    }
+
+    if(status===R.NOT_ACCEPTABLE){
+        const reasons=[...new Set(rows.filter(r=>r.status===R.NOT_ACCEPTABLE).map(r=>r.reason).filter(Boolean))];
+        const content='<strong>NO ACEPTABLE</strong>'+
+            (reasons.length?'<div style="margin-top:4px;">'+reasons.map(escapeHtml).join('<br>')+'</div>':'');
+        return '<td style="border:1px solid #9ca3af;padding:6px;vertical-align:top;'+wordStatusCellStyle(status)+'">'+content+'</td>';
+    }
+
+    if(status===R.NEEDS_CONFIRMATION){
+        const reasons=[...new Set(rows.filter(r=>r.status===R.NEEDS_CONFIRMATION).map(r=>r.reason).filter(Boolean))];
+        const content='<strong>REQUIERE CONFIRMACIÓN</strong>'+
+            (reasons.length?'<div style="margin-top:4px;">'+reasons.map(escapeHtml).join('<br>')+'</div>':'');
+        return '<td style="border:1px solid #9ca3af;padding:6px;vertical-align:top;'+wordStatusCellStyle(status)+'">'+content+'</td>';
+    }
+
+    return '<td style="border:1px solid #9ca3af;padding:6px;vertical-align:top;'+wordStatusCellStyle(status)+'"><strong>NO EVALUADO</strong></td>';
 }
 
 function wordSectionTable(sectionKey, title) {
@@ -1998,12 +2012,14 @@ function wordSectionTable(sectionKey, title) {
             if(sectionKey==="trunk" && label==="Flexión / extensión" && /^Flexión/.test(r.measurement||"")) return true;
             return false;
         });
-        return '<tr><td style="border:1px solid #9ca3af;padding:6px;font-weight:700;background:#fff;">'+escapeHtml(label)+'</td>'+
+        return '<tr><td style="border:1px solid #9ca3af;padding:6px 6px 6px 22px;background:#fff;">↳ '+escapeHtml(label)+'</td>'+
             wordResultCell(matching,"static")+wordResultCell(matching,"dynamic")+'</tr>';
     }).join('');
     return '<section class="pmf-word-block"><div class="pmf-word-heading"><h3>'+escapeHtml(title)+'</h3>'+
         '<button type="button" class="toolbar-btn pmf-copy-word-table">Copiar tabla</button></div>'+
-        '<div class="pmf-word-copy-target"><table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:10pt;">'+
+        '<div class="pmf-word-copy-target">'+
+        '<div style="font-family:Arial,sans-serif;font-size:10pt;font-weight:700;background:#eaf2fb;border:1px solid #9ca3af;border-bottom:0;padding:7px;">'+escapeHtml(title)+'</div>'+
+        '<table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:10pt;">'+
         '<thead><tr>'+
         '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Movimiento</th>'+
         '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Postura forzada estática</th>'+
