@@ -1877,17 +1877,34 @@ function summarizeResultSet(results) {
     return {status:R.NOT_EVALUATED,text:"NO EVALUADO",reasons:[]};
 }
 
+function simulationOverrideHasChanges(sectionKey, measurement, mode, override, currentResult) {
+    if(!override || !Object.keys(override).length || !currentResult) return false;
+    const base=currentSimulationValues(sectionKey,measurement,mode,currentResult);
+    return Object.keys(override).some(field => String(base[field])!==String(override[field]));
+}
+
 function simulatedResultForWord(sectionKey, measurement, mode) {
     const store=ensureSimulationStore();
     const canonical=canonicalMeasurementForResult(sectionKey,measurement);
     const key=simulationKey(sectionKey,canonical,mode);
     const override=store.overrides?.[key];
-    const simulated=store.results?.[key];
 
-    if(!override || !Object.keys(override).length || !simulated) return null;
+    const sourceResults=(pmfProject.analysis?.bodySections?.[sectionKey]?.results||[]).filter(r =>
+        r.mode===mode && canonicalMeasurementForResult(sectionKey,r.measurement)===canonical
+    );
+    const current=worstSimulationSource(sourceResults);
+    if(!simulationOverrideHasChanges(sectionKey,canonical,mode,override,current)) return null;
+
+    const base=currentSimulationValues(sectionKey,canonical,mode,current);
+    const values={...base,...override};
+    if(sectionKey.startsWith("lower_") && canonical==="Rodilla" &&
+       (Object.prototype.hasOwnProperty.call(override,"internalAngle") || Object.prototype.hasOwnProperty.call(override,"posture"))){
+        values.useOriginalKneeMeasures=false;
+    }
+    const simulated=evaluateSimulation(sectionKey,canonical,mode,values);
 
     return {
-        status:simulated.simulatedStatus,
+        status:simulated.status,
         reason:simulated.reason||"",
         measurement:canonical,
         mode
@@ -2149,7 +2166,7 @@ function liveSimulationRowsForWord() {
             canonicalMeasurementForResult(section,r.measurement)===measurement
         );
         const current=worstSimulationSource(sourceResults);
-        if(!current) return;
+        if(!current || !simulationOverrideHasChanges(section,measurement,mode,override,current)) return;
 
         const base=currentSimulationValues(section,measurement,mode,current);
         const values={...base,...override};
