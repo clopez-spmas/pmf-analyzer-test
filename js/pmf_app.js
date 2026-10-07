@@ -2203,12 +2203,11 @@ function wordSimulationTable() {
             '<td style="border:1px solid #9ca3af;padding:6px;'+(showSection?'font-weight:700;background:#eaf2fb;':'background:#fff;')+'">'+(showSection?escapeHtml(item.sectionLabel):'')+'</td>'+
             '<td style="border:1px solid #9ca3af;padding:6px 6px 6px 22px;background:#fff;">↳ '+escapeHtml(item.measurement)+'</td>'+
             '<td style="border:1px solid #9ca3af;padding:6px;background:#fff;">'+mode+'</td>'+
-            wordSimulationStatusCell(item.currentStatus,item.currentReason)+
             wordSimulationStatusCell(item.simulatedStatus,item.simulatedReason)+
         '</tr>';
     }).join('');
 
-    const body=rows || '<tr><td colspan="5" style="border:1px solid #9ca3af;padding:6px;background:#fff;">Todavía no hay resultados disponibles.</td></tr>';
+    const body=rows || '<tr><td colspan="4" style="border:1px solid #9ca3af;padding:6px;background:#fff;">Todavía no hay resultados disponibles.</td></tr>';
 
     return '<section class="pmf-word-block"><div class="pmf-word-heading"><h3>Resultados de la simulación</h3>'+
         '<button type="button" class="toolbar-btn pmf-copy-word-table">Copiar tabla</button></div>'+
@@ -2217,7 +2216,6 @@ function wordSimulationTable() {
         '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Segmento corporal</th>'+
         '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Postura / movimiento</th>'+
         '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Tipo</th>'+
-        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Resultado original</th>'+
         '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Resultado con simulación</th>'+
         '</tr></thead><tbody>'+body+'</tbody></table></div></section>';
 }
