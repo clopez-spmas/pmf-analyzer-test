@@ -2394,11 +2394,11 @@ function renderSimulation() {
         });
         by.forEach((results,key)=>{
             const current=worstSimulationSource(results);
-            if(current && current.status!==PMFCriteria.RESULT.NOT_EVALUATED) groups.push({section,key,current});
+            if(current && current.status===PMFCriteria.RESULT.NOT_ACCEPTABLE) groups.push({section,key,current});
         });
     });
     if(!groups.length){
-        container.innerHTML='<div class="placeholder">Todavía no hay resultados evaluados para simular.</div>';
+        container.innerHTML='<div class="placeholder">No hay posturas o movimientos NO ACEPTABLES que requieran simulación de mejora.</div>';
         return;
     }
 
