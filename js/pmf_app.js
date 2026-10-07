@@ -1983,27 +1983,24 @@ function segmentSummaryRows(forWord=false) {
     ];
 
     return sections.map(([key,label,movements])=>{
-        const stat=segmentModeSummary(key,"static");
-        const dyn=segmentModeSummary(key,"dynamic");
-        const first=forWord
-            ? '<td style="border:1px solid #9ca3af;padding:7px;font-weight:700;background:#eaf2fb;">'+escapeHtml(label)+'</td>'
-            : '<td class="pmf-summary-segment"><strong>'+escapeHtml(label)+'</strong></td>';
-        const segmentRow='<tr class="pmf-summary-segment-row">'+first+segmentSummaryCell(stat,forWord)+segmentSummaryCell(dyn,forWord)+'</tr>';
-
         const visibleMovements=movements.filter(movement =>
             !(key==="trunk" && movement==="Postura convexa lumbar" && ensureSectionStudy("trunk").taskPosture==="standing")
         );
+
+        const groupHeader=forWord
+            ? '<tr><td colspan="3" style="border:1px solid #9ca3af;padding:7px;font-weight:700;background:#eaf2fb;">'+escapeHtml(label)+'</td></tr>'
+            : '<tr class="pmf-summary-group"><td colspan="3"><strong>'+escapeHtml(label)+'</strong></td></tr>';
 
         const detailRows=visibleMovements.map(movement=>{
             const mStat=movementModeSummary(key,movement,"static");
             const mDyn=movementModeSummary(key,movement,"dynamic");
             const movementCell=forWord
-                ? '<td style="border:1px solid #9ca3af;padding:7px 7px 7px 22px;background:#fff;">↳ '+escapeHtml(movement)+'</td>'
-                : '<td class="pmf-summary-movement">↳ '+escapeHtml(movement)+'</td>';
+                ? '<td style="border:1px solid #9ca3af;padding:7px 7px 7px 22px;background:#fff;">'+escapeHtml(movement)+'</td>'
+                : '<td class="pmf-summary-movement">'+escapeHtml(movement)+'</td>';
             return '<tr class="pmf-summary-movement-row">'+movementCell+segmentSummaryCell(mStat,forWord)+segmentSummaryCell(mDyn,forWord)+'</tr>';
         }).join("");
 
-        return segmentRow+detailRows;
+        return groupHeader+detailRows;
     }).join("");
 }
 
@@ -2011,7 +2008,7 @@ function renderSegmentResultsSummary() {
     const container=document.getElementById("segmentResultsSummary");
     if(!container || !pmfProject) return;
     container.innerHTML='<div class="result-table-wrap"><table class="compact-table pmf-segment-summary-table">'+
-        '<thead><tr><th>Segmento corporal / postura-movimiento</th><th>Estática</th><th>Dinámica</th></tr></thead>'+
+        '<thead><tr><th>Postura / movimiento</th><th>Estática</th><th>Dinámica</th></tr></thead>'+
         '<tbody>'+segmentSummaryRows(false)+'</tbody></table></div>';
 }
 
@@ -2020,7 +2017,7 @@ function wordSegmentSummaryTable() {
         '<button type="button" class="toolbar-btn pmf-copy-word-table">Copiar tabla</button></div>'+
         '<div class="pmf-word-copy-target"><table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:10pt;">'+
         '<thead><tr>'+
-        '<th style="border:1px solid #9ca3af;padding:7px;background:#dbeafe;text-align:left;">Segmento corporal / postura-movimiento</th>'+
+        '<th style="border:1px solid #9ca3af;padding:7px;background:#dbeafe;text-align:left;">Postura / movimiento</th>'+
         '<th style="border:1px solid #9ca3af;padding:7px;background:#dbeafe;text-align:left;">Estática</th>'+
         '<th style="border:1px solid #9ca3af;padding:7px;background:#dbeafe;text-align:left;">Dinámica</th>'+
         '</tr></thead><tbody>'+segmentSummaryRows(true)+'</tbody></table></div></section>';
