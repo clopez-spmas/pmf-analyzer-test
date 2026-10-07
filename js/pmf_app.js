@@ -2129,28 +2129,91 @@ function wordSimulationStatusCell(status, reason) {
     return '<td style="border:1px solid #9ca3af;padding:6px;vertical-align:top;'+style+'"><strong>NO EVALUADO</strong></td>';
 }
 
-function wordSimulationTable() {
+function liveSimulationRowsForWord() {
     const sections=pmfProject.analysis?.bodySections||{};
     const store=ensureSimulationStore();
-    const entries=Object.entries(store.results||{});
-    let lastSection=null;
-    const rows=entries.map(([key,item])=>{
-        const sectionLabel=sections[item.section]?.label||item.section;
-        const mode=item.mode==="static"?"Estática":"Dinámica";
-        const showSection=sectionLabel!==lastSection;
-        lastSection=sectionLabel;
+    const rows=[];
 
-        const currentReason=item.currentReason||"";
+    Object.entries(store.overrides||{}).forEach(([key,override])=>{
+        if(!override || !Object.keys(override).length) return;
+
+        const parts=key.split("|");
+        if(parts.length<3) return;
+        const section=parts[0];
+        const mode=parts[parts.length-1];
+        const measurement=parts.slice(1,-1).join("|");
+        if(!["static","dynamic"].includes(mode)) return;
+
+        const sourceResults=(sections[section]?.results||[]).filter(r =>
+            r.mode===mode &&
+            canonicalMeasurementForResult(section,r.measurement)===measurement
+        );
+        const current=worstSimulationSource(sourceResults);
+        if(!current) return;
+
+        const base=currentSimulationValues(section,measurement,mode,current);
+        const values={...base,...override};
+        if(section.startsWith("lower_") && measurement==="Rodilla" &&
+           (Object.prototype.hasOwnProperty.call(override,"internalAngle") || Object.prototype.hasOwnProperty.call(override,"posture"))){
+            values.useOriginalKneeMeasures=false;
+        }
+
+        const simulated=evaluateSimulation(section,measurement,mode,values);
+        rows.push({
+            key,
+            section,
+            sectionLabel:sections[section]?.label||section,
+            measurement,
+            mode,
+            currentStatus:current.status,
+            currentReason:current.reason||"",
+            simulatedStatus:simulated.status,
+            simulatedReason:simulated.reason||"",
+            values,
+            override
+        });
+    });
+
+    const sectionOrder={trunk:0,head_neck:1,lower_right:2,lower_left:3};
+    const movementOrder={
+        "Flexión / extensión":0,
+        "Inclinación lateral":1,
+        "Rotación axial":2,
+        "Postura convexa lumbar":3,
+        "Flexión / extensión de cabeza":0,
+        "Lateralización de cabeza":1,
+        "Rotación axial de cabeza":2,
+        "Rodilla":0,
+        "Tobillo":1
+    };
+    rows.sort((a,b)=>
+        (sectionOrder[a.section]??99)-(sectionOrder[b.section]??99) ||
+        (movementOrder[a.measurement]??99)-(movementOrder[b.measurement]??99) ||
+        (a.mode==="static"?0:1)-(b.mode==="static"?0:1)
+    );
+    return rows;
+}
+
+function wordSimulationTable() {
+    const entries=liveSimulationRowsForWord();
+    let lastSection=null;
+
+    const rows=entries.map(item=>{
+        const mode=item.mode==="static"?"Estática":"Dinámica";
+        const showSection=item.sectionLabel!==lastSection;
+        lastSection=item.sectionLabel;
 
         return '<tr>'+
-            '<td style="border:1px solid #9ca3af;padding:6px;'+(showSection?'font-weight:700;background:#eaf2fb;':'background:#fff;')+'">'+(showSection?escapeHtml(sectionLabel):'')+'</td>'+
-            '<td style="border:1px solid #9ca3af;padding:6px 6px 6px 22px;background:#fff;">↳ '+escapeHtml(item.measurement||"")+'</td>'+
+            '<td style="border:1px solid #9ca3af;padding:6px;'+(showSection?'font-weight:700;background:#eaf2fb;':'background:#fff;')+'">'+(showSection?escapeHtml(item.sectionLabel):'')+'</td>'+
+            '<td style="border:1px solid #9ca3af;padding:6px 6px 6px 22px;background:#fff;">↳ '+escapeHtml(item.measurement)+'</td>'+
             '<td style="border:1px solid #9ca3af;padding:6px;background:#fff;">'+mode+'</td>'+
-            wordSimulationStatusCell(item.currentStatus,currentReason)+
-            wordSimulationStatusCell(item.simulatedStatus,item.reason||"")+
+            wordSimulationStatusCell(item.currentStatus,item.currentReason)+
+            wordSimulationStatusCell(item.simulatedStatus,item.simulatedReason)+
         '</tr>';
     }).join('');
-    const body=rows || '<tr><td colspan="5" style="border:1px solid #9ca3af;padding:6px;background:#fff;">Todavía no hay resultados de simulación.</td></tr>';
+
+    const body=rows || '<tr><td colspan="5" style="border:1px solid #9ca3af;padding:6px;background:#fff;">Todavía no se ha realizado ninguna simulación de mejora.</td></tr>';
+
     return '<section class="pmf-word-block"><div class="pmf-word-heading"><h3>Resultados de la simulación</h3>'+
         '<button type="button" class="toolbar-btn pmf-copy-word-table">Copiar tabla</button></div>'+
         '<div class="pmf-word-copy-target"><table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:10pt;">'+
