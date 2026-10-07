@@ -345,8 +345,13 @@ function touchProject(updateStatus = true) {
 function bindUnsavedChangesWarning() {
     window.addEventListener("beforeunload", event => {
         if (!pmfHasUnsavedChanges) return;
+
+        // Activa el diálogo nativo del navegador al cerrar, recargar
+        // o abandonar la página con cambios pendientes de guardar.
+        const message = "Hay cambios sin guardar en el estudio. ¿Desea salir sin guardarlos?";
         event.preventDefault();
-        event.returnValue = "";
+        event.returnValue = message;
+        return message;
     });
 }
 
