@@ -2206,9 +2206,9 @@ function currentSimulationValues(section, measurement, mode, result) {
 
     values.angle=simFinite(inputs.angle,simFinite(calc.extremeAngle,
         simFinite(calc.evaluationAngle,simFinite(calc.worstEpisode?.averageAngle,null))));
-    values.frequencyPerMinute=simFinite(inputs.frequencyPerMinute,simFinite(calc.frequencyPerMinute,0));
-    values.criticalTimePercent=simFinite(inputs.criticalTimePercent,simFinite(calc.criticalPercent,0));
-    values.staticSeconds=simFinite(calc.totalStaticSeconds,simFinite(calc.worstEpisode?.duration,5));
+    values.frequencyPerMinute=simFinite(inputs.frequencyPerMinute,simFinite(calc.frequencyPerMinute,null));
+    values.criticalTimePercent=simFinite(inputs.criticalTimePercent,simFinite(calc.criticalPercent,null));
+    values.staticSeconds=simFinite(calc.totalStaticSeconds,simFinite(calc.worstEpisode?.duration,null));
     values.fullTrunkSupport=inputs.fullTrunkSupport ?? v.fullSupport ?? v.fullTrunkSupport ?? null;
     values.fullHeadSupport=inputs.fullHeadSupport ?? v.fullHeadSupport ?? null;
     values.neckFlexionAngle=simFinite(inputs.neckFlexionAngle,null);
@@ -2220,8 +2220,8 @@ function currentSimulationValues(section, measurement, mode, result) {
     if(values.internalAngle===null && section.startsWith("lower_") && measurement==="Rodilla"){
         if(values.posture==="standing" && values.standingFlexion!==null) values.internalAngle=180-values.standingFlexion;
         else if(values.posture==="seated" && values.seatedExcursion!==null) values.internalAngle=90+values.seatedExcursion;
-        else values.internalAngle=180;
     }
+    values.useOriginalKneeMeasures=section.startsWith("lower_") && measurement==="Rodilla";
     values.ischialSupport=inputs.ischialSupport ?? v.ischialSupport ?? null;
     values.trunkPosteriorInclined=inputs.trunkPosteriorInclined ?? v.trunkPosteriorInclined ?? null;
     if(measurement==="Tobillo"){
@@ -2290,9 +2290,14 @@ function evaluateSimulation(section, measurement, mode, values) {
     if(section==="lower_right" || section==="lower_left"){
         if(measurement==="Rodilla"){
             const posture=values.posture==="seated"?"seated":"standing";
-            const internal=Number(values.internalAngle);
-            const standingFlexion=180-internal;
-            const seatedExcursion=Math.abs(internal-90);
+            const internal=simFinite(values.internalAngle,null);
+            const useOriginal=values.useOriginalKneeMeasures===true;
+            const standingFlexion=useOriginal && values.standingFlexion!==null
+                ? values.standingFlexion
+                : (internal!==null ? 180-internal : null);
+            const seatedExcursion=useOriginal && values.seatedExcursion!==null
+                ? values.seatedExcursion
+                : (internal!==null ? Math.abs(internal-90) : null);
             if(mode==="dynamic"){
                 return PMFCriteria.lowerLimb.kneeDynamic({
                     posture,
@@ -2330,10 +2335,18 @@ function simNumber(label,name,value,step="0.1",min=null,max=null) {
     return '<label>'+escapeHtml(label)+'<input type="number" data-sim-field="'+name+'" step="'+step+'"'+(min!==null?' min="'+min+'"':'')+(max!==null?' max="'+max+'"':'')+' value="'+escapeHtml(value??"")+'"></label>';
 }
 function simFrequency(value) {
-    return '<label>Frecuencia<select data-sim-field="frequencyPerMinute"><option value="0" '+(Number(value)<2?"selected":"")+'>‹ 2 movimientos/minuto</option><option value="2" '+(Number(value)>=2?"selected":"")+'>≥ 2 movimientos/minuto</option></select></label>';
+    const n=simFinite(value,null);
+    return '<label>Frecuencia<select data-sim-field="frequencyPerMinute">'+
+        '<option value="" '+(n===null?"selected":"")+'>-- seleccionar --</option>'+
+        '<option value="0" '+(n!==null&&n<2?"selected":"")+'>‹ 2 movimientos/minuto</option>'+
+        '<option value="2" '+(n!==null&&n>=2?"selected":"")+'>≥ 2 movimientos/minuto</option></select></label>';
 }
 function simCriticalTime(value) {
-    return '<label>Tiempo en postura crítica<select data-sim-field="criticalTimePercent"><option value="60" '+(Number(value)<=60?"selected":"")+'>≤ 60% del tiempo de la tarea</option><option value="60.01" '+(Number(value)>60?"selected":"")+'>› 60% del tiempo de la tarea</option></select></label>';
+    const n=simFinite(value,null);
+    return '<label>Tiempo en postura crítica<select data-sim-field="criticalTimePercent">'+
+        '<option value="" '+(n===null?"selected":"")+'>-- seleccionar --</option>'+
+        '<option value="60" '+(n!==null&&n<=60?"selected":"")+'>≤ 60% del tiempo de la tarea</option>'+
+        '<option value="60.01" '+(n!==null&&n>60?"selected":"")+'>› 60% del tiempo de la tarea</option></select></label>';
 }
 
 function simulationControls(section,measurement,mode,v) {
@@ -2479,6 +2492,10 @@ function renderSimulation() {
         const base=currentSimulationValues(section,measurement,current.mode,current);
         const override=store.overrides[key]||{};
         const values={...base,...override};
+        if(section.startsWith("lower_") && measurement==="Rodilla" &&
+           (Object.prototype.hasOwnProperty.call(override,"internalAngle") || Object.prototype.hasOwnProperty.call(override,"posture"))){
+            values.useOriginalKneeMeasures=false;
+        }
         const simulated=evaluateSimulation(section,measurement,current.mode,values);
         store.results[key]={
             section,measurement,mode:current.mode,
