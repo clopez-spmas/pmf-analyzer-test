@@ -1934,22 +1934,18 @@ function wordEffectiveResults(sectionKey, mode, measurement=null) {
     return effective;
 }
 
-function segmentModeSummary(sectionKey, mode, forWord=false) {
-    const results=forWord
-        ? wordEffectiveResults(sectionKey,mode)
-        : (pmfProject.analysis?.bodySections?.[sectionKey]?.results||[]).filter(r=>r.mode===mode);
+function segmentModeSummary(sectionKey, mode) {
+    const results=(pmfProject.analysis?.bodySections?.[sectionKey]?.results||[]).filter(r=>r.mode===mode);
     return summarizeResultSet(results);
 }
 
-function movementModeSummary(sectionKey, label, mode, forWord=false) {
-    const results=forWord
-        ? wordEffectiveResults(sectionKey,mode,label)
-        : (pmfProject.analysis?.bodySections?.[sectionKey]?.results||[]).filter(r=>{
-            if(r.mode!==mode) return false;
-            if(r.measurement===label) return true;
-            if(sectionKey==="trunk" && label==="Flexión / extensión" && /^Flexión/.test(r.measurement||"")) return true;
-            return false;
-        });
+function movementModeSummary(sectionKey, label, mode) {
+    const results=(pmfProject.analysis?.bodySections?.[sectionKey]?.results||[]).filter(r=>{
+        if(r.mode!==mode) return false;
+        if(r.measurement===label) return true;
+        if(sectionKey==="trunk" && label==="Flexión / extensión" && /^Flexión/.test(r.measurement||"")) return true;
+        return false;
+    });
     return summarizeResultSet(results);
 }
 
@@ -1987,8 +1983,8 @@ function segmentSummaryRows(forWord=false) {
     ];
 
     return sections.map(([key,label,movements])=>{
-        const stat=segmentModeSummary(key,"static",forWord);
-        const dyn=segmentModeSummary(key,"dynamic",forWord);
+        const stat=segmentModeSummary(key,"static");
+        const dyn=segmentModeSummary(key,"dynamic");
         const first=forWord
             ? '<td style="border:1px solid #9ca3af;padding:7px;font-weight:700;background:#eaf2fb;">'+escapeHtml(label)+'</td>'
             : '<td class="pmf-summary-segment"><strong>'+escapeHtml(label)+'</strong></td>';
@@ -1999,8 +1995,8 @@ function segmentSummaryRows(forWord=false) {
         );
 
         const detailRows=visibleMovements.map(movement=>{
-            const mStat=movementModeSummary(key,movement,"static",forWord);
-            const mDyn=movementModeSummary(key,movement,"dynamic",forWord);
+            const mStat=movementModeSummary(key,movement,"static");
+            const mDyn=movementModeSummary(key,movement,"dynamic");
             const movementCell=forWord
                 ? '<td style="border:1px solid #9ca3af;padding:7px 7px 7px 22px;background:#fff;">↳ '+escapeHtml(movement)+'</td>'
                 : '<td class="pmf-summary-movement">↳ '+escapeHtml(movement)+'</td>';
@@ -2064,12 +2060,8 @@ function wordResultMetrics(r) {
     return parts.join(" · ");
 }
 
-function wordResultCell(items, mode, sectionKey=null, measurement=null) {
-    let rows=(items||[]).filter(r=>r.mode===mode);
-    if(sectionKey && measurement){
-        const simulated=simulatedResultForWord(sectionKey,measurement,mode);
-        if(simulated) rows=[simulated];
-    }
+function wordResultCell(items, mode) {
+    const rows=(items||[]).filter(r=>r.mode===mode);
     if(!rows.length) return '<td style="border:1px solid #9ca3af;padding:6px;background:#fff;">—</td>';
 
     const R=PMFCriteria.RESULT;
@@ -2115,7 +2107,7 @@ function wordSectionTable(sectionKey, title) {
             return false;
         });
         return '<tr><td style="border:1px solid #9ca3af;padding:6px 6px 6px 22px;background:#fff;">↳ '+escapeHtml(label)+'</td>'+
-            wordResultCell(matching,"static",sectionKey,label)+wordResultCell(matching,"dynamic",sectionKey,label)+'</tr>';
+            wordResultCell(matching,"static")+wordResultCell(matching,"dynamic")+'</tr>';
     }).join('');
     return '<section class="pmf-word-block"><div class="pmf-word-heading"><h3>'+escapeHtml(title)+'</h3>'+
         '<button type="button" class="toolbar-btn pmf-copy-word-table">Copiar tabla</button></div>'+
@@ -2149,7 +2141,39 @@ function wordSimulationStatusCell(status, reason) {
 function wordSimulationTable() {
     const sections=pmfProject.analysis?.bodySections||{};
     const store=ensureSimulationStore();
-    const entries=Object.values(store.results||{}).filter(item=>item?.hasChanges===true);
+    const entries=[];
+
+    Object.entries(sections).forEach(([section,data])=>{
+        const grouped=new Map();
+
+        (data?.results||[]).forEach(result=>{
+            if(!result?.measurement || !["static","dynamic"].includes(result.mode)) return;
+            const measurement=canonicalMeasurementForResult(section,result.measurement);
+            const key=simulationKey(section,measurement,result.mode);
+            if(!grouped.has(key)) grouped.set(key,{section,measurement,mode:result.mode,results:[]});
+            grouped.get(key).results.push(result);
+        });
+
+        grouped.forEach(group=>{
+            const current=worstSimulationSource(group.results);
+            if(!current || current.status===PMFCriteria.RESULT.NOT_EVALUATED) return;
+
+            const saved=store.results?.[simulationKey(group.section,group.measurement,group.mode)];
+            const hasSimulation=saved?.hasChanges===true;
+
+            entries.push({
+                section:group.section,
+                sectionLabel:data?.label||group.section,
+                measurement:group.measurement,
+                mode:group.mode,
+                currentStatus:current.status,
+                currentReason:current.reason||"",
+                simulatedStatus:hasSimulation ? saved.simulatedStatus : current.status,
+                simulatedReason:hasSimulation ? (saved.reason||"") : (current.reason||""),
+                hasSimulation
+            });
+        });
+    });
 
     const sectionOrder={trunk:0,head_neck:1,lower_right:2,lower_left:3};
     const movementOrder={
@@ -2171,21 +2195,20 @@ function wordSimulationTable() {
 
     let lastSection=null;
     const rows=entries.map(item=>{
-        const sectionLabel=sections[item.section]?.label||item.section;
         const mode=item.mode==="static"?"Estática":"Dinámica";
-        const showSection=sectionLabel!==lastSection;
-        lastSection=sectionLabel;
+        const showSection=item.sectionLabel!==lastSection;
+        lastSection=item.sectionLabel;
 
         return '<tr>'+
-            '<td style="border:1px solid #9ca3af;padding:6px;'+(showSection?'font-weight:700;background:#eaf2fb;':'background:#fff;')+'">'+(showSection?escapeHtml(sectionLabel):'')+'</td>'+
-            '<td style="border:1px solid #9ca3af;padding:6px 6px 6px 22px;background:#fff;">↳ '+escapeHtml(item.measurement||"")+'</td>'+
+            '<td style="border:1px solid #9ca3af;padding:6px;'+(showSection?'font-weight:700;background:#eaf2fb;':'background:#fff;')+'">'+(showSection?escapeHtml(item.sectionLabel):'')+'</td>'+
+            '<td style="border:1px solid #9ca3af;padding:6px 6px 6px 22px;background:#fff;">↳ '+escapeHtml(item.measurement)+'</td>'+
             '<td style="border:1px solid #9ca3af;padding:6px;background:#fff;">'+mode+'</td>'+
-            wordSimulationStatusCell(item.currentStatus,item.currentReason||"")+
-            wordSimulationStatusCell(item.simulatedStatus,item.reason||"")+
+            wordSimulationStatusCell(item.currentStatus,item.currentReason)+
+            wordSimulationStatusCell(item.simulatedStatus,item.simulatedReason)+
         '</tr>';
     }).join('');
 
-    const body=rows || '<tr><td colspan="5" style="border:1px solid #9ca3af;padding:6px;background:#fff;">Todavía no se ha realizado ninguna simulación de mejora.</td></tr>';
+    const body=rows || '<tr><td colspan="5" style="border:1px solid #9ca3af;padding:6px;background:#fff;">Todavía no hay resultados disponibles.</td></tr>';
 
     return '<section class="pmf-word-block"><div class="pmf-word-heading"><h3>Resultados de la simulación</h3>'+
         '<button type="button" class="toolbar-btn pmf-copy-word-table">Copiar tabla</button></div>'+
@@ -2194,8 +2217,8 @@ function wordSimulationTable() {
         '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Segmento corporal</th>'+
         '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Postura / movimiento</th>'+
         '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Tipo</th>'+
-        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Resultado actual</th>'+
-        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Resultado simulado</th>'+
+        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Resultado original</th>'+
+        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Resultado con simulación</th>'+
         '</tr></thead><tbody>'+body+'</tbody></table></div></section>';
 }
 
