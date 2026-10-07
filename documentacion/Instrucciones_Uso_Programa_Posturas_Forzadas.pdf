@@ -1,0 +1,362 @@
+%PDF-1.4
+% OpenAI generated documentation
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 3 /Kids [5 0 R 7 0 R 9 0 R] >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 3297 >>
+stream
+BT
+/F2 20 Tf
+1 0 0 1 50 790 Tm
+(Instrucciones de uso) Tj
+/F2 13 Tf
+1 0 0 1 50 767 Tm
+(Programa de analisis de Posturas Forzadas) Tj
+/F2 13 Tf
+1 0 0 1 50 733 Tm
+(1. Finalidad del programa) Tj
+/F1 10.5 Tf
+1 0 0 1 50 710 Tm
+(Este programa permite analizar posturas forzadas por segmentos corporales mediante dos vias de) Tj
+/F1 10.5 Tf
+1 0 0 1 50 693 Tm
+(trabajo: Manual y Kinovea. Cada postura o movimiento se estudia de forma independiente.) Tj
+/F1 10 Tf
+1 0 0 1 50 676 Tm
+() Tj
+/F2 13 Tf
+1 0 0 1 50 655 Tm
+(2. Antes de comenzar) Tj
+/F1 10.5 Tf
+1 0 0 1 50 632 Tm
+(Defina la postura o movimiento que desea estudiar. Elija la vista de video mas adecuada.) Tj
+/F1 10.5 Tf
+1 0 0 1 50 615 Tm
+(Coloque solo los marcadores necesarios. Si lo necesita, puede procesar el mismo video varias) Tj
+/F1 10.5 Tf
+1 0 0 1 50 598 Tm
+(veces en Kinovea usando distintos marcadores para distintos analisis.) Tj
+/F1 10 Tf
+1 0 0 1 50 581 Tm
+() Tj
+/F2 13 Tf
+1 0 0 1 50 560 Tm
+(3. Vias de analisis disponibles) Tj
+/F1 10.5 Tf
+1 0 0 1 50 537 Tm
+(Manual: utilicelo cuando no disponga de datos Kinovea, cuando la postura no pueda valorarse) Tj
+/F1 10.5 Tf
+1 0 0 1 50 520 Tm
+(adecuadamente con Kinovea o cuando prefiera introducir directamente el dato observado.) Tj
+/F1 10.5 Tf
+1 0 0 1 50 503 Tm
+(Kinovea: utilicelo cuando disponga de un video adecuado y de los marcadores necesarios. En las) Tj
+/F1 10.5 Tf
+1 0 0 1 50 486 Tm
+(pantallas correspondientes puede elegirse Manual o Kinovea de forma independiente.) Tj
+/F1 10 Tf
+1 0 0 1 50 469 Tm
+() Tj
+/F2 13 Tf
+1 0 0 1 50 448 Tm
+(4. Preparacion del video) Tj
+/F1 10.5 Tf
+1 0 0 1 50 425 Tm
+(Utilice una grabacion estable. Procure que el segmento corporal se vea con claridad y evite) Tj
+/F1 10.5 Tf
+1 0 0 1 50 408 Tm
+(ocultaciones. Elija la vista que mejor muestre el movimiento o la postura. Si un video no) Tj
+/F1 10.5 Tf
+1 0 0 1 50 391 Tm
+(sirve para una postura concreta, analice esa postura manualmente.) Tj
+/F1 10 Tf
+1 0 0 1 50 374 Tm
+() Tj
+/F2 13 Tf
+1 0 0 1 50 353 Tm
+(5. Vistas recomendadas) Tj
+/F1 10.5 Tf
+1 0 0 1 50 330 Tm
+(Vista lateral: flexion y extension.) Tj
+/F1 10.5 Tf
+1 0 0 1 50 313 Tm
+(Vista frontal o posterior: inclinacion lateral.) Tj
+/F1 10.5 Tf
+1 0 0 1 50 296 Tm
+(Vista 3/4: giro del tronco o de la cabeza.) Tj
+/F1 10.5 Tf
+1 0 0 1 50 279 Tm
+(Rodilla: vista lateral.) Tj
+/F1 10.5 Tf
+1 0 0 1 50 262 Tm
+(Tobillo: vista lateral.) Tj
+/F1 10 Tf
+1 0 0 1 50 245 Tm
+() Tj
+/F2 13 Tf
+1 0 0 1 50 224 Tm
+(6. Marcadores: criterio general) Tj
+/F1 10.5 Tf
+1 0 0 1 50 201 Tm
+(Use solo los marcadores necesarios para la postura a estudiar.) Tj
+/F1 10.5 Tf
+1 0 0 1 50 184 Tm
+(Espalda / tronco: flexion-extension: hombro + cadera; inclinacion lateral: hombros + caderas;) Tj
+/F1 10.5 Tf
+1 0 0 1 50 167 Tm
+(giro: hombros + caderas; postura convexa lumbar: valoracion visual o manual.) Tj
+/F1 10.5 Tf
+1 0 0 1 50 150 Tm
+(Cabeza y cuello: flexion-extension: punto anterior de cabeza + punto posterior de cabeza +) Tj
+/F1 10.5 Tf
+1 0 0 1 50 133 Tm
+(cuello; lateralizacion: cuello + punto anterior + punto posterior de cabeza; giro de cabeza:) Tj
+/F1 10.5 Tf
+1 0 0 1 50 116 Tm
+(oreja derecha + oreja izquierda.) Tj
+/F1 10.5 Tf
+1 0 0 1 50 99 Tm
+(Extremidades inferiores: rodilla: cadera + rodilla + tobillo; tobillo: rodilla + tobillo +) Tj
+/F1 10.5 Tf
+1 0 0 1 50 82 Tm
+(pie.) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 3274 >>
+stream
+BT
+/F1 10 Tf
+1 0 0 1 50 790 Tm
+() Tj
+/F2 13 Tf
+1 0 0 1 50 769 Tm
+(7. Analisis por segmentos corporales) Tj
+/F1 10.5 Tf
+1 0 0 1 50 746 Tm
+(El programa organiza el estudio en: Espalda / tronco, Cabeza y cuello, Extremidad inferior) Tj
+/F1 10.5 Tf
+1 0 0 1 50 729 Tm
+(derecha y Extremidad inferior izquierda. Dentro de cada segmento, cada postura o movimiento se) Tj
+/F1 10.5 Tf
+1 0 0 1 50 712 Tm
+(valora por separado.) Tj
+/F1 10 Tf
+1 0 0 1 50 695 Tm
+() Tj
+/F2 13 Tf
+1 0 0 1 50 674 Tm
+(8. Unidad de tiempo) Tj
+/F1 10.5 Tf
+1 0 0 1 50 651 Tm
+(Segun la postura, el tiempo puede introducirse en segundos o como porcentaje del tiempo) Tj
+/F1 10.5 Tf
+1 0 0 1 50 634 Tm
+(analizado en el que se mantiene la postura. Utilice la misma unidad de tiempo en toda la) Tj
+/F1 10.5 Tf
+1 0 0 1 50 617 Tm
+(valoracion de esa pantalla.) Tj
+/F1 10 Tf
+1 0 0 1 50 600 Tm
+() Tj
+/F2 13 Tf
+1 0 0 1 50 579 Tm
+(9. Posturas estaticas y dinamicas) Tj
+/F1 10.5 Tf
+1 0 0 1 50 556 Tm
+(Una postura forzada estatica se considera cuando se mantiene durante mas de 4 segundos. En los) Tj
+/F1 10.5 Tf
+1 0 0 1 50 539 Tm
+(movimientos dinamicos, la frecuencia se clasifica en dos grupos: menos de 2 movimientos por) Tj
+/F1 10.5 Tf
+1 0 0 1 50 522 Tm
+(minuto, o 2 o mas movimientos por minuto.) Tj
+/F1 10 Tf
+1 0 0 1 50 505 Tm
+() Tj
+/F2 13 Tf
+1 0 0 1 50 484 Tm
+(10. Analisis manual) Tj
+/F1 10.5 Tf
+1 0 0 1 50 461 Tm
+(Introduzca el angulo o intervalo solicitado, el tiempo correspondiente y, cuando proceda, la) Tj
+/F1 10.5 Tf
+1 0 0 1 50 444 Tm
+(frecuencia. Si la pantalla lo solicita, confirme tambien variables complementarias como apoyo,) Tj
+/F1 10.5 Tf
+1 0 0 1 50 427 Tm
+(postura de referencia, inclinacion posterior del tronco o apoyo de los huesos de la pelvis) Tj
+/F1 10.5 Tf
+1 0 0 1 50 410 Tm
+(sobre los que nos sentamos.) Tj
+/F1 10 Tf
+1 0 0 1 50 393 Tm
+() Tj
+/F2 13 Tf
+1 0 0 1 50 372 Tm
+(11. Analisis con Kinovea) Tj
+/F1 10.5 Tf
+1 0 0 1 50 349 Tm
+(Cargue uno o varios archivos JSON de Kinovea. Asigne los marcadores a los puntos anatomicos) Tj
+/F1 10.5 Tf
+1 0 0 1 50 332 Tm
+(correspondientes. Revise que la asignacion sea correcta. El programa utilizara los datos) Tj
+/F1 10.5 Tf
+1 0 0 1 50 315 Tm
+(disponibles para calcular la postura o el movimiento. Si una postura no puede valorarse) Tj
+/F1 10.5 Tf
+1 0 0 1 50 298 Tm
+(adecuadamente con Kinovea, seleccione Manual.) Tj
+/F1 10 Tf
+1 0 0 1 50 281 Tm
+() Tj
+/F2 13 Tf
+1 0 0 1 50 260 Tm
+(12. Un mismo video puede utilizarse varias veces) Tj
+/F1 10.5 Tf
+1 0 0 1 50 237 Tm
+(Un mismo video puede servir para distintos analisis. Puede procesarlo varias veces en Kinovea) Tj
+/F1 10.5 Tf
+1 0 0 1 50 220 Tm
+(y utilizar en cada ocasion solo los marcadores necesarios para la postura concreta.) Tj
+/F1 10 Tf
+1 0 0 1 50 203 Tm
+() Tj
+/F2 13 Tf
+1 0 0 1 50 182 Tm
+(13. Ayudas incluidas en el programa) Tj
+/F1 10.5 Tf
+1 0 0 1 50 159 Tm
+(Las pantallas incorporan ayudas desplegables con ejemplos de posturas, aclaraciones sobre como) Tj
+/F1 10.5 Tf
+1 0 0 1 50 142 Tm
+(observarlas y, cuando procede, indicaciones para introducir los datos manualmente.) Tj
+/F1 10 Tf
+1 0 0 1 50 125 Tm
+() Tj
+/F2 13 Tf
+1 0 0 1 50 104 Tm
+(14. Guardar y cargar estudios) Tj
+/F1 10.5 Tf
+1 0 0 1 50 81 Tm
+(Guardar estudio permite elegir el nombre y la ubicacion del archivo JSON cuando el navegador) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 10 0 R >>
+endobj
+10 0 obj
+<< /Length 2088 >>
+stream
+BT
+/F1 10.5 Tf
+1 0 0 1 50 790 Tm
+(lo admite. Cargar estudio permite continuar un trabajo guardado anteriormente. Si existen) Tj
+/F1 10.5 Tf
+1 0 0 1 50 773 Tm
+(cambios sin guardar e intenta cerrar o recargar la pagina, el navegador mostrara un aviso.) Tj
+/F1 10 Tf
+1 0 0 1 50 756 Tm
+() Tj
+/F2 13 Tf
+1 0 0 1 50 735 Tm
+(15. Resultados y simulacion) Tj
+/F1 10.5 Tf
+1 0 0 1 50 712 Tm
+(Los resultados se muestran por postura o movimiento, diferenciando valoracion estatica y) Tj
+/F1 10.5 Tf
+1 0 0 1 50 695 Tm
+(dinamica. La simulacion solo ofrece las posturas o movimientos NO ACEPTABLES del resultado) Tj
+/F1 10.5 Tf
+1 0 0 1 50 678 Tm
+(original. La simulacion no modifica el estudio original: permite cambiar condiciones y) Tj
+/F1 10.5 Tf
+1 0 0 1 50 661 Tm
+(comprobar como variaria el resultado.) Tj
+/F1 10 Tf
+1 0 0 1 50 644 Tm
+() Tj
+/F2 13 Tf
+1 0 0 1 50 623 Tm
+(16. Tablas para Word) Tj
+/F1 10.5 Tf
+1 0 0 1 50 600 Tm
+(La pagina Tablas para Word incluye tablas de resultados originales y una tabla del escenario) Tj
+/F1 10.5 Tf
+1 0 0 1 50 583 Tm
+(con simulacion. Los resultados ACEPTABLES se muestran en verde. Los NO ACEPTABLES se muestran) Tj
+/F1 10.5 Tf
+1 0 0 1 50 566 Tm
+(en rojo y con el motivo. Las tablas pueden copiarse directamente para pegarlas en Word.) Tj
+/F1 10 Tf
+1 0 0 1 50 549 Tm
+() Tj
+/F2 13 Tf
+1 0 0 1 50 528 Tm
+(Resumen practico) Tj
+/F1 10.5 Tf
+1 0 0 1 50 505 Tm
+(1. Identifique el estudio y la tarea.) Tj
+/F1 10.5 Tf
+1 0 0 1 50 488 Tm
+(2. Cargue los JSON de Kinovea si va a utilizarlos.) Tj
+/F1 10.5 Tf
+1 0 0 1 50 471 Tm
+(3. Asigne los marcadores correctamente.) Tj
+/F1 10.5 Tf
+1 0 0 1 50 454 Tm
+(4. Revise cada postura o movimiento y elija Manual o Kinovea.) Tj
+/F1 10.5 Tf
+1 0 0 1 50 437 Tm
+(5. Introduzca o confirme los datos solicitados.) Tj
+/F1 10.5 Tf
+1 0 0 1 50 420 Tm
+(6. Revise los resultados.) Tj
+/F1 10.5 Tf
+1 0 0 1 50 403 Tm
+(7. Si existen resultados NO ACEPTABLES, utilice la simulacion si desea comprobar mejoras.) Tj
+/F1 10.5 Tf
+1 0 0 1 50 386 Tm
+(8. Guarde el estudio y copie las tablas para Word cuando lo necesite.) Tj
+/F1 10 Tf
+1 0 0 1 50 369 Tm
+() Tj
+ET
+endstream
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000042 00000 n 
+0000000091 00000 n 
+0000000160 00000 n 
+0000000257 00000 n 
+0000000359 00000 n 
+0000000495 00000 n 
+0000003843 00000 n 
+0000003979 00000 n 
+0000007304 00000 n 
+0000007441 00000 n 
+trailer
+<< /Size 11 /Root 1 0 R >>
+startxref
+9581
+%%EOF
