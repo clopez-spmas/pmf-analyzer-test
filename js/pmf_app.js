@@ -2135,86 +2135,70 @@ function wordSimulationStatusCell(status, reason) {
     return '<td style="border:1px solid #9ca3af;padding:6px;vertical-align:top;'+style+'"><strong>NO EVALUADO</strong></td>';
 }
 
-function wordSimulationTable() {
+function simulationScenarioSummary(sectionKey, measurement, mode) {
     const sections=pmfProject.analysis?.bodySections||{};
     const store=ensureSimulationStore();
-    const entries=[];
-
-    Object.entries(sections).forEach(([section,data])=>{
-        const grouped=new Map();
-
-        (data?.results||[]).forEach(result=>{
-            if(!result?.measurement || !["static","dynamic"].includes(result.mode)) return;
-            const measurement=canonicalMeasurementForResult(section,result.measurement);
-            const key=simulationKey(section,measurement,result.mode);
-            if(!grouped.has(key)) grouped.set(key,{section,measurement,mode:result.mode,results:[]});
-            grouped.get(key).results.push(result);
-        });
-
-        grouped.forEach(group=>{
-            const current=worstSimulationSource(group.results);
-            if(!current || current.status===PMFCriteria.RESULT.NOT_EVALUATED) return;
-
-            const saved=store.results?.[simulationKey(group.section,group.measurement,group.mode)];
-            const hasSimulation=saved?.hasChanges===true;
-
-            entries.push({
-                section:group.section,
-                sectionLabel:data?.label||group.section,
-                measurement:group.measurement,
-                mode:group.mode,
-                currentStatus:current.status,
-                currentReason:current.reason||"",
-                simulatedStatus:hasSimulation ? saved.simulatedStatus : current.status,
-                simulatedReason:hasSimulation ? (saved.reason||"") : (current.reason||""),
-                hasSimulation
-            });
-        });
-    });
-
-    const sectionOrder={trunk:0,head_neck:1,lower_right:2,lower_left:3};
-    const movementOrder={
-        "Flexión / extensión":0,
-        "Inclinación lateral":1,
-        "Rotación axial":2,
-        "Postura convexa lumbar":3,
-        "Flexión / extensión de cabeza":0,
-        "Lateralización de cabeza":1,
-        "Rotación axial de cabeza":2,
-        "Rodilla":0,
-        "Tobillo":1
-    };
-    entries.sort((a,b)=>
-        (sectionOrder[a.section]??99)-(sectionOrder[b.section]??99) ||
-        (movementOrder[a.measurement]??99)-(movementOrder[b.measurement]??99) ||
-        (a.mode==="static"?0:1)-(b.mode==="static"?0:1)
+    const canonical=canonicalMeasurementForResult(sectionKey,measurement);
+    const original=(sections[sectionKey]?.results||[]).filter(r =>
+        r.mode===mode && canonicalMeasurementForResult(sectionKey,r.measurement)===canonical
     );
 
-    let lastSection=null;
-    const rows=entries.map(item=>{
-        const mode=item.mode==="static"?"Estática":"Dinámica";
-        const showSection=item.sectionLabel!==lastSection;
-        lastSection=item.sectionLabel;
+    const current=worstSimulationSource(original);
+    if(!current) return {status:PMFCriteria.RESULT.NOT_EVALUATED,text:"NO EVALUADO",reasons:[]};
 
-        return '<tr>'+
-            '<td style="border:1px solid #9ca3af;padding:6px;'+(showSection?'font-weight:700;background:#eaf2fb;':'background:#fff;')+'">'+(showSection?escapeHtml(item.sectionLabel):'')+'</td>'+
-            '<td style="border:1px solid #9ca3af;padding:6px 6px 6px 22px;background:#fff;">↳ '+escapeHtml(item.measurement)+'</td>'+
-            '<td style="border:1px solid #9ca3af;padding:6px;background:#fff;">'+mode+'</td>'+
-            wordSimulationStatusCell(item.simulatedStatus,item.simulatedReason)+
-        '</tr>';
-    }).join('');
+    const saved=store.results?.[simulationKey(sectionKey,canonical,mode)];
+    const hasSimulation=saved?.hasChanges===true;
+    const status=hasSimulation ? saved.simulatedStatus : current.status;
+    const reason=hasSimulation ? (saved.reason||"") : (current.reason||"");
 
-    const body=rows || '<tr><td colspan="4" style="border:1px solid #9ca3af;padding:6px;background:#fff;">Todavía no hay resultados disponibles.</td></tr>';
+    return {
+        status,
+        text:status===PMFCriteria.RESULT.ACCEPTABLE
+            ? "ACEPTABLE"
+            : status===PMFCriteria.RESULT.NOT_ACCEPTABLE
+                ? "NO ACEPTABLE"
+                : status===PMFCriteria.RESULT.NEEDS_CONFIRMATION
+                    ? "REQUIERE CONFIRMACIÓN"
+                    : "NO EVALUADO",
+        reasons:reason ? [reason] : []
+    };
+}
 
+function wordSimulationRows() {
+    const sections=[
+        ["trunk","Tronco",["Flexión / extensión","Inclinación lateral","Rotación axial","Postura convexa lumbar"]],
+        ["head_neck","Cabeza / cuello",["Flexión / extensión de cabeza","Lateralización de cabeza","Rotación axial de cabeza"]],
+        ["lower_right","Extremidad inferior derecha",["Rodilla","Tobillo"]],
+        ["lower_left","Extremidad inferior izquierda",["Rodilla","Tobillo"]]
+    ];
+
+    return sections.map(([key,label,movements])=>{
+        const visibleMovements=movements.filter(movement =>
+            !(key==="trunk" && movement==="Postura convexa lumbar" && ensureSectionStudy("trunk").taskPosture==="standing")
+        );
+
+        const groupHeader='<tr><td colspan="3" style="border:1px solid #9ca3af;padding:7px;font-weight:700;background:#eaf2fb;">'+escapeHtml(label)+'</td></tr>';
+
+        const detailRows=visibleMovements.map(movement=>{
+            const stat=simulationScenarioSummary(key,movement,"static");
+            const dyn=simulationScenarioSummary(key,movement,"dynamic");
+            const movementCell='<td style="border:1px solid #9ca3af;padding:7px 7px 7px 22px;background:#fff;">'+escapeHtml(movement)+'</td>';
+            return '<tr>'+movementCell+segmentSummaryCell(stat,true)+segmentSummaryCell(dyn,true)+'</tr>';
+        }).join("");
+
+        return groupHeader+detailRows;
+    }).join("");
+}
+
+function wordSimulationTable() {
     return '<section class="pmf-word-block"><div class="pmf-word-heading"><h3>Resultados de la simulación</h3>'+
         '<button type="button" class="toolbar-btn pmf-copy-word-table">Copiar tabla</button></div>'+
         '<div class="pmf-word-copy-target"><table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:10pt;">'+
         '<thead><tr>'+
-        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Segmento corporal</th>'+
-        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Postura / movimiento</th>'+
-        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Tipo</th>'+
-        '<th style="border:1px solid #9ca3af;padding:6px;background:#dbeafe;text-align:left;">Resultado con simulación</th>'+
-        '</tr></thead><tbody>'+body+'</tbody></table></div></section>';
+        '<th style="border:1px solid #9ca3af;padding:7px;background:#dbeafe;text-align:left;">Postura / movimiento</th>'+
+        '<th style="border:1px solid #9ca3af;padding:7px;background:#dbeafe;text-align:left;">Estática</th>'+
+        '<th style="border:1px solid #9ca3af;padding:7px;background:#dbeafe;text-align:left;">Dinámica</th>'+
+        '</tr></thead><tbody>'+wordSimulationRows()+'</tbody></table></div></section>';
 }
 
 async function copyWordTable(target) {
