@@ -1818,8 +1818,7 @@ function renderAnalysisResults() {
     renderSegmentResultsSummary();
 }
 
-function segmentModeSummary(sectionKey, mode) {
-    const results=(pmfProject.analysis?.bodySections?.[sectionKey]?.results||[]).filter(r=>r.mode===mode);
+function summarizeResultSet(results) {
     const R=PMFCriteria.RESULT;
     if(!results.length) return {status:R.NOT_EVALUATED,text:"NO EVALUADO",reasons:[]};
 
@@ -1839,6 +1838,21 @@ function segmentModeSummary(sectionKey, mode) {
     if(acceptable) return {status:R.ACCEPTABLE,text:"ACEPTABLE",reasons:[]};
 
     return {status:R.NOT_EVALUATED,text:"NO EVALUADO",reasons:[]};
+}
+
+function segmentModeSummary(sectionKey, mode) {
+    const results=(pmfProject.analysis?.bodySections?.[sectionKey]?.results||[]).filter(r=>r.mode===mode);
+    return summarizeResultSet(results);
+}
+
+function movementModeSummary(sectionKey, label, mode) {
+    const results=(pmfProject.analysis?.bodySections?.[sectionKey]?.results||[]).filter(r=>{
+        if(r.mode!==mode) return false;
+        if(r.measurement===label) return true;
+        if(sectionKey==="trunk" && label==="Flexión / extensión" && /^Flexión/.test(r.measurement||"")) return true;
+        return false;
+    });
+    return summarizeResultSet(results);
 }
 
 function segmentSummaryCell(summary, forWord=false) {
@@ -1868,18 +1882,34 @@ function segmentSummaryCell(summary, forWord=false) {
 
 function segmentSummaryRows(forWord=false) {
     const sections=[
-        ["trunk","Tronco"],
-        ["head_neck","Cabeza / cuello"],
-        ["lower_right","Extremidad inferior derecha"],
-        ["lower_left","Extremidad inferior izquierda"]
+        ["trunk","Tronco",["Flexión / extensión","Inclinación lateral","Rotación axial","Postura convexa lumbar"]],
+        ["head_neck","Cabeza / cuello",["Flexión / extensión de cabeza","Lateralización de cabeza","Rotación axial de cabeza"]],
+        ["lower_right","Extremidad inferior derecha",["Rodilla","Tobillo"]],
+        ["lower_left","Extremidad inferior izquierda",["Rodilla","Tobillo"]]
     ];
-    return sections.map(([key,label])=>{
+
+    return sections.map(([key,label,movements])=>{
         const stat=segmentModeSummary(key,"static");
         const dyn=segmentModeSummary(key,"dynamic");
         const first=forWord
-            ? '<td style="border:1px solid #9ca3af;padding:7px;font-weight:700;background:#fff;">'+escapeHtml(label)+'</td>'
-            : '<td><strong>'+escapeHtml(label)+'</strong></td>';
-        return '<tr>'+first+segmentSummaryCell(stat,forWord)+segmentSummaryCell(dyn,forWord)+'</tr>';
+            ? '<td style="border:1px solid #9ca3af;padding:7px;font-weight:700;background:#eaf2fb;">'+escapeHtml(label)+'</td>'
+            : '<td class="pmf-summary-segment"><strong>'+escapeHtml(label)+'</strong></td>';
+        const segmentRow='<tr class="pmf-summary-segment-row">'+first+segmentSummaryCell(stat,forWord)+segmentSummaryCell(dyn,forWord)+'</tr>';
+
+        const visibleMovements=movements.filter(movement =>
+            !(key==="trunk" && movement==="Postura convexa lumbar" && ensureSectionStudy("trunk").taskPosture==="standing")
+        );
+
+        const detailRows=visibleMovements.map(movement=>{
+            const mStat=movementModeSummary(key,movement,"static");
+            const mDyn=movementModeSummary(key,movement,"dynamic");
+            const movementCell=forWord
+                ? '<td style="border:1px solid #9ca3af;padding:7px 7px 7px 22px;background:#fff;">↳ '+escapeHtml(movement)+'</td>'
+                : '<td class="pmf-summary-movement">↳ '+escapeHtml(movement)+'</td>';
+            return '<tr class="pmf-summary-movement-row">'+movementCell+segmentSummaryCell(mStat,forWord)+segmentSummaryCell(mDyn,forWord)+'</tr>';
+        }).join("");
+
+        return segmentRow+detailRows;
     }).join("");
 }
 
@@ -1887,16 +1917,16 @@ function renderSegmentResultsSummary() {
     const container=document.getElementById("segmentResultsSummary");
     if(!container || !pmfProject) return;
     container.innerHTML='<div class="result-table-wrap"><table class="compact-table pmf-segment-summary-table">'+
-        '<thead><tr><th>Segmento corporal</th><th>Estática</th><th>Dinámica</th></tr></thead>'+
+        '<thead><tr><th>Segmento corporal / postura-movimiento</th><th>Estática</th><th>Dinámica</th></tr></thead>'+
         '<tbody>'+segmentSummaryRows(false)+'</tbody></table></div>';
 }
 
 function wordSegmentSummaryTable() {
-    return '<section class="pmf-word-block"><div class="pmf-word-heading"><h3>Resumen de resultados por segmento corporal</h3>'+
+    return '<section class="pmf-word-block"><div class="pmf-word-heading"><h3>Resumen de resultados por segmento corporal y postura/movimiento</h3>'+
         '<button type="button" class="toolbar-btn pmf-copy-word-table">Copiar tabla</button></div>'+
         '<div class="pmf-word-copy-target"><table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:10pt;">'+
         '<thead><tr>'+
-        '<th style="border:1px solid #9ca3af;padding:7px;background:#dbeafe;text-align:left;">Segmento corporal</th>'+
+        '<th style="border:1px solid #9ca3af;padding:7px;background:#dbeafe;text-align:left;">Segmento corporal / postura-movimiento</th>'+
         '<th style="border:1px solid #9ca3af;padding:7px;background:#dbeafe;text-align:left;">Estática</th>'+
         '<th style="border:1px solid #9ca3af;padding:7px;background:#dbeafe;text-align:left;">Dinámica</th>'+
         '</tr></thead><tbody>'+segmentSummaryRows(true)+'</tbody></table></div></section>';
