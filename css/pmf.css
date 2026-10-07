@@ -228,3 +228,10 @@ th{background:#f1f5f9;color:#005a9c}
 .pmf-summary-pending{background:#ffeb9c;color:#9c6500}
 .pmf-summary-not-evaluated{background:#f3f4f6;color:#475569}
 .pmf-summary-reasons{margin-top:6px;line-height:1.4;font-weight:400}
+
+
+/* Jerarquía segmento > postura/movimiento en resumen */
+.pmf-summary-segment-row td:first-child{background:#eaf2fb}
+.pmf-summary-segment{font-weight:700}
+.pmf-summary-movement{padding-left:22px!important;background:#fff}
+.pmf-summary-movement-row td{border-top:1px solid #e5e7eb}
