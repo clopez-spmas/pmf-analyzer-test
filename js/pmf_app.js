@@ -2146,50 +2146,10 @@ function wordSimulationStatusCell(status, reason) {
     return '<td style="border:1px solid #9ca3af;padding:6px;vertical-align:top;'+style+'"><strong>NO EVALUADO</strong></td>';
 }
 
-function liveSimulationRowsForWord() {
+function wordSimulationTable() {
     const sections=pmfProject.analysis?.bodySections||{};
     const store=ensureSimulationStore();
-    const rows=[];
-
-    Object.entries(store.overrides||{}).forEach(([key,override])=>{
-        if(!override || !Object.keys(override).length) return;
-
-        const parts=key.split("|");
-        if(parts.length<3) return;
-        const section=parts[0];
-        const mode=parts[parts.length-1];
-        const measurement=parts.slice(1,-1).join("|");
-        if(!["static","dynamic"].includes(mode)) return;
-
-        const sourceResults=(sections[section]?.results||[]).filter(r =>
-            r.mode===mode &&
-            canonicalMeasurementForResult(section,r.measurement)===measurement
-        );
-        const current=worstSimulationSource(sourceResults);
-        if(!current || !simulationOverrideHasChanges(section,measurement,mode,override,current)) return;
-
-        const base=currentSimulationValues(section,measurement,mode,current);
-        const values={...base,...override};
-        if(section.startsWith("lower_") && measurement==="Rodilla" &&
-           (Object.prototype.hasOwnProperty.call(override,"internalAngle") || Object.prototype.hasOwnProperty.call(override,"posture"))){
-            values.useOriginalKneeMeasures=false;
-        }
-
-        const simulated=evaluateSimulation(section,measurement,mode,values);
-        rows.push({
-            key,
-            section,
-            sectionLabel:sections[section]?.label||section,
-            measurement,
-            mode,
-            currentStatus:current.status,
-            currentReason:current.reason||"",
-            simulatedStatus:simulated.status,
-            simulatedReason:simulated.reason||"",
-            values,
-            override
-        });
-    });
+    const entries=Object.values(store.results||{}).filter(item=>item?.hasChanges===true);
 
     const sectionOrder={trunk:0,head_neck:1,lower_right:2,lower_left:3};
     const movementOrder={
@@ -2203,29 +2163,25 @@ function liveSimulationRowsForWord() {
         "Rodilla":0,
         "Tobillo":1
     };
-    rows.sort((a,b)=>
+    entries.sort((a,b)=>
         (sectionOrder[a.section]??99)-(sectionOrder[b.section]??99) ||
         (movementOrder[a.measurement]??99)-(movementOrder[b.measurement]??99) ||
         (a.mode==="static"?0:1)-(b.mode==="static"?0:1)
     );
-    return rows;
-}
 
-function wordSimulationTable() {
-    const entries=liveSimulationRowsForWord();
     let lastSection=null;
-
     const rows=entries.map(item=>{
+        const sectionLabel=sections[item.section]?.label||item.section;
         const mode=item.mode==="static"?"Estática":"Dinámica";
-        const showSection=item.sectionLabel!==lastSection;
-        lastSection=item.sectionLabel;
+        const showSection=sectionLabel!==lastSection;
+        lastSection=sectionLabel;
 
         return '<tr>'+
-            '<td style="border:1px solid #9ca3af;padding:6px;'+(showSection?'font-weight:700;background:#eaf2fb;':'background:#fff;')+'">'+(showSection?escapeHtml(item.sectionLabel):'')+'</td>'+
-            '<td style="border:1px solid #9ca3af;padding:6px 6px 6px 22px;background:#fff;">↳ '+escapeHtml(item.measurement)+'</td>'+
+            '<td style="border:1px solid #9ca3af;padding:6px;'+(showSection?'font-weight:700;background:#eaf2fb;':'background:#fff;')+'">'+(showSection?escapeHtml(sectionLabel):'')+'</td>'+
+            '<td style="border:1px solid #9ca3af;padding:6px 6px 6px 22px;background:#fff;">↳ '+escapeHtml(item.measurement||"")+'</td>'+
             '<td style="border:1px solid #9ca3af;padding:6px;background:#fff;">'+mode+'</td>'+
-            wordSimulationStatusCell(item.currentStatus,item.currentReason)+
-            wordSimulationStatusCell(item.simulatedStatus,item.simulatedReason)+
+            wordSimulationStatusCell(item.currentStatus,item.currentReason||"")+
+            wordSimulationStatusCell(item.simulatedStatus,item.reason||"")+
         '</tr>';
     }).join('');
 
@@ -2611,11 +2567,11 @@ function renderSimulation() {
 
     const cards=groups.map(({section,key,measurement,current})=>{
         const sourceSignature=simulationSourceSignature(section,measurement,current.mode,current);
-        if(store.sourceSignatures[key]!==sourceSignature){
+        if(store.sourceSignatures[key] && store.sourceSignatures[key]!==sourceSignature){
             delete store.overrides[key];
             delete store.results[key];
-            store.sourceSignatures[key]=sourceSignature;
         }
+        store.sourceSignatures[key]=sourceSignature;
 
         const base=currentSimulationValues(section,measurement,current.mode,current);
         const override=store.overrides[key]||{};
@@ -2625,11 +2581,15 @@ function renderSimulation() {
             values.useOriginalKneeMeasures=false;
         }
         const simulated=evaluateSimulation(section,measurement,current.mode,values);
+        const changedFields=Object.keys(override).filter(field=>String(base[field])!==String(override[field]));
         store.results[key]={
             section,measurement,mode:current.mode,
             currentStatus:current.status,currentReason:current.reason||"",
             simulatedStatus:simulated.status,
-            reason:simulated.reason,values:PMFStorage.deepClone(values)
+            reason:simulated.reason,
+            values:PMFStorage.deepClone(values),
+            hasChanges:changedFields.length>0,
+            changedFields
         };
         const sectionLabel=sections[section]?.label||section;
         return '<article class="pmf-sim-card" data-sim-key="'+escapeHtml(key)+'">'+
